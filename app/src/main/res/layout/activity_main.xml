@@ -5,6 +5,7 @@
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@drawable/monmistic"
     android:foregroundTint="#00FFFFFF"
     app:layout_constraintDimensionRatio="1:1"
     tools:context=".MainActivity">
@@ -25,55 +26,49 @@
 
     <Button
         android:id="@+id/botonInventario"
-        android:layout_width="0dp"
+        android:layout_width="100dp"
         android:layout_height="0dp"
         android:foreground="@drawable/iconinventari"
         app:layout_constraintBottom_toTopOf="@+id/guideline8"
         app:layout_constraintDimensionRatio="1:1"
-        app:layout_constraintEnd_toStartOf="@+id/guideline4"
-        app:layout_constraintStart_toStartOf="@+id/guideline3"
-        app:layout_constraintTop_toTopOf="@+id/guideline7" />
+        app:layout_constraintEnd_toStartOf="@+id/guideline13"
+        app:layout_constraintStart_toStartOf="@+id/guideline13"
+        app:layout_constraintTop_toBottomOf="@+id/botonCriatura" />
 
     <Button
         android:id="@+id/botonMapa"
-        android:layout_width="0dp"
+        android:layout_width="100dp"
         android:layout_height="0dp"
         android:foreground="@drawable/iconmapa"
         android:foregroundTint="#00FFFFFF"
         android:foregroundTintMode="add"
-        app:layout_constraintBottom_toTopOf="@+id/guideline6"
+        app:layout_constraintBottom_toTopOf="@+id/botonCriatura"
         app:layout_constraintDimensionRatio="1:1"
-        app:layout_constraintEnd_toStartOf="@+id/guideline4"
-        app:layout_constraintStart_toStartOf="@+id/guideline3"
+        app:layout_constraintEnd_toStartOf="@+id/guideline13"
+        app:layout_constraintStart_toStartOf="@+id/guideline13"
         app:layout_constraintTop_toTopOf="@+id/guideline5" />
 
     <Button
         android:id="@+id/botonCriatura"
-        android:layout_width="0dp"
+        android:layout_width="100dp"
         android:layout_height="0dp"
+        android:autoText="false"
         android:foreground="@drawable/imgcriaturag"
         android:foregroundTintMode="add"
-        app:layout_constraintBottom_toTopOf="@id/guideline7"
+        android:hapticFeedbackEnabled="false"
+        app:layout_constraintBottom_toTopOf="@+id/guideline"
         app:layout_constraintDimensionRatio="1:1"
-        app:layout_constraintEnd_toStartOf="@+id/guideline4"
-        app:layout_constraintHorizontal_bias="0.444"
-        app:layout_constraintStart_toStartOf="@+id/guideline3"
-        app:layout_constraintTop_toTopOf="@id/guideline6"
-        app:layout_constraintVertical_bias="1.0" />
+        app:layout_constraintEnd_toStartOf="@+id/guideline13"
+        app:layout_constraintStart_toStartOf="@+id/guideline13"
+        app:layout_constraintTop_toTopOf="@+id/guideline"
+        app:layout_constraintVertical_bias="0.0" />
 
     <androidx.constraintlayout.widget.Guideline
         android:id="@+id/guideline3"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        app:layout_constraintGuide_percent="0.8" />
-
-    <androidx.constraintlayout.widget.Guideline
-        android:id="@+id/guideline4"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        app:layout_constraintGuide_percent="0.96" />
+        app:layout_constraintGuide_percent="0.8016416" />
 
     <androidx.constraintlayout.widget.Guideline
         android:id="@+id/guideline5"
@@ -81,20 +76,6 @@
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         app:layout_constraintGuide_percent="0.18" />
-
-    <androidx.constraintlayout.widget.Guideline
-        android:id="@+id/guideline6"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        app:layout_constraintGuide_percent="0.39" />
-
-    <androidx.constraintlayout.widget.Guideline
-        android:id="@+id/guideline7"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        app:layout_constraintGuide_percent="0.61" />
 
     <androidx.constraintlayout.widget.Guideline
         android:id="@+id/guideline8"
@@ -126,7 +107,7 @@
 
     <Button
         android:id="@+id/bottonmenos1"
-        android:layout_width="56dp"
+        android:layout_width="60dp"
         android:layout_height="0dp"
         android:backgroundTint="#00FFFFFF"
         android:foreground="@drawable/zoommin"
@@ -142,7 +123,7 @@
 
     <Button
         android:id="@+id/bottonmenos2"
-        android:layout_width="0dp"
+        android:layout_width="60dp"
         android:layout_height="0dp"
         android:backgroundTint="#00FFFFFF"
         android:foreground="@drawable/zoomout"
@@ -155,8 +136,8 @@
 
     <Button
         android:id="@+id/bottonmas1"
-        android:layout_width="52dp"
-        android:layout_height="56dp"
+        android:layout_width="60dp"
+        android:layout_height="0dp"
         android:backgroundTint="#03FFFFFF"
         android:foreground="@drawable/zoommax"
         android:visibility="invisible"
@@ -168,7 +149,7 @@
 
     <Button
         android:id="@+id/bottonmas2"
-        android:layout_width="0dp"
+        android:layout_width="60dp"
         android:layout_height="0dp"
         android:backgroundTint="#00FFFFFF"
         android:foreground="@drawable/zoomin"

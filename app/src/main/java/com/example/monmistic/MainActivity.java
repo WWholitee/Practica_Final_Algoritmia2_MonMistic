@@ -34,12 +34,11 @@ public class MainActivity extends AppCompatActivity {
     //////INICIALIZACIONES
     private boolean botonesMapaVisibles, botonCiaturasVisibles, botonInventarioVisible = false;
     public Button BMapa, BCriatura, BInventario, Bmenos1, Bmenos2, Bmas1, Bmas2;
-    private TextView PZoom, NomZona, Puntos, textCriaturas;
-    private EditText CercaZona;
+    //private TextView PZoom, NomZona, Puntos, textCriaturas;
+    //private EditText CercaZona;
     private SurfaceView SV, SV2;
-    Map<String, View> mapaViews = new HashMap<>();
+    UnsortedLinkedListSet<View> mapaViews;
     Map<String, View> craituresViews = new HashMap<>();
-
     Map<String, View> inventariViews = new HashMap<>();
 
     private Context context;
@@ -61,22 +60,13 @@ public class MainActivity extends AppCompatActivity {
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
+            inicializarConjuntoMapa();
             return insets;
         });
 
 
-
         //Mapa View
         BMapa = findViewById(R.id.botonMapa);
-        mapaViews.put("Bmenos1", findViewById(R.id.bottonmenos1));
-        mapaViews.put("Bmenos2", findViewById(R.id.bottonmenos2));
-        mapaViews.put("Bmas1", findViewById(R.id.bottonmas1));
-        mapaViews.put("Bmas2", findViewById(R.id.bottonmas2));
-        mapaViews.put("PZoom", findViewById(R.id.PorcentajeZoom));
-        mapaViews.put("NomZona", findViewById(R.id.NomZONA));
-        mapaViews.put("Puntos", findViewById(R.id.Puntos));
-        mapaViews.put("CercaZona", findViewById(R.id.CercaZona));
-        mapaViews.put("SV", findViewById(R.id.surfaceView));
 
         //Criaturas View
         BCriatura = findViewById(R.id.botonCriatura);
@@ -99,18 +89,19 @@ public class MainActivity extends AppCompatActivity {
 
         //Funcion hacer visible Mapa
         BMapa.setOnClickListener(v -> {
-            for (Map.Entry<String, View> entrada : mapaViews.entrySet()) {
-                View view = entrada.getValue();
-                if (botonesMapaVisibles) {
-                    view.setVisibility(View.GONE);
-                } else {
-                    view.setVisibility(View.VISIBLE);
-
+            if(botonesMapaVisibles){
+                for (View item : mapaViews) {
+                    item.setVisibility(View.INVISIBLE);
                 }
+                botonesMapaVisibles = false;
+            } else {
+                for (View item : mapaViews) {
+                    item.setVisibility(View.VISIBLE);
+                }
+                botonesMapaVisibles = true;
             }
-            dibuixaMapa();
-            botonesMapaVisibles = !botonesMapaVisibles;
         });
+
         //Funcion hacer visible Criaturas
         BCriatura.setOnClickListener(v -> {
             for (Map.Entry<String, View> entrada : craituresViews.entrySet()) {
@@ -194,6 +185,30 @@ public class MainActivity extends AppCompatActivity {
         //btnAvall.setOnClickListener(v -> moure(0, 50));
 
     }
+    public void inicializarConjuntoMapa(){
+        // --- Asignar nombre a elementos ---
+        SurfaceView sv = findViewById(R.id.surfaceView);
+        TextView tv1 = findViewById(R.id.NomZONA);
+        TextView tv2 = findViewById(R.id.PorcentajeZoom);
+        TextView tv3 = findViewById(R.id.Puntos);
+        TextView tv4 = findViewById(R.id.CercaZona);
+        Button bt1 = findViewById(R.id.bottonmenos2);
+        Button bt2 = findViewById(R.id.bottonmas2);
+        Button bt3 = findViewById(R.id.bottonmas1);
+        Button bt4 = findViewById(R.id.bottonmenos1);
+
+        // --- Añadir elementos al conjunto ---
+        mapaViews = new UnsortedLinkedListSet<View>();
+        mapaViews.add(sv);
+        mapaViews.add(tv1);
+        mapaViews.add(tv2);
+        mapaViews.add(tv3);
+        mapaViews.add(tv4);
+        mapaViews.add(bt1);
+        mapaViews.add(bt2);
+        mapaViews.add(bt3);
+        mapaViews.add(bt4);
+    }
 
     private void dibuixaImatge() {
         if (SV.getHolder().getSurface().isValid()) {
@@ -211,7 +226,7 @@ public class MainActivity extends AppCompatActivity {
             SV.getHolder().unlockCanvasAndPost(canvas);
         }
     }
-   private void dibuixaMapa() {
+    private void dibuixaMapa() {
        if (SV.getHolder().getSurface().isValid()) {
            int amplaPantalla = SV.getWidth();
            int altPantalla = SV.getHeight();
@@ -238,7 +253,7 @@ public class MainActivity extends AppCompatActivity {
            canvas.drawBitmap(bmp, src, dst, new Paint());
            SV.getHolder().unlockCanvasAndPost(canvas);
        }
-       }
+    }
 
        private void ferZoomIn() {
         Log.d("ZOOM", "Zoom In");
@@ -271,11 +286,6 @@ public class MainActivity extends AppCompatActivity {
 
 
    }
-
-
-
-
-
 
 
 
