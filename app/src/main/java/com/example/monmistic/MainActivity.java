@@ -14,6 +14,7 @@ import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
 import android.widget.Button;
+import android.widget.RadioButton;
 import android.widget.TextView;
 import android.widget.EditText;
 
@@ -32,14 +33,15 @@ import java.util.jar.Attributes;
 public class MainActivity extends AppCompatActivity {
 
     //////INICIALIZACIONES
-    private boolean botonesMapaVisibles, botonCiaturasVisibles, botonInventarioVisible = false;
     public Button BMapa, BCriatura, BInventario, Bmenos1, Bmenos2, Bmas1, Bmas2;
     //private TextView PZoom, NomZona, Puntos, textCriaturas;
     //private EditText CercaZona;
     private SurfaceView SV, SV2;
     UnsortedLinkedListSet<View> mapaViews;
-    Map<String, View> craituresViews = new HashMap<>();
-    Map<String, View> inventariViews = new HashMap<>();
+    UnsortedLinkedListSet<View> craituresViews;
+    UnsortedLinkedListSet<View> inventariViews;
+    private String conjuntoVisible = ""; // "mapa", "criaturas", "inventario", ""
+
 
     private Context context;
     private Bitmap bmp;// imagen del mapa
@@ -57,10 +59,14 @@ public class MainActivity extends AppCompatActivity {
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+
+        inicializarConjuntoMapa();
+        inicializarConjuntoCriaturas();
+        inicializarConjuntoInventario();
+
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
             v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
-            inicializarConjuntoMapa();
             return insets;
         });
 
@@ -70,64 +76,9 @@ public class MainActivity extends AppCompatActivity {
 
         //Criaturas View
         BCriatura = findViewById(R.id.botonCriatura);
-        craituresViews.put("SV2", findViewById(R.id.surfaceView2));
-        craituresViews.put("textCriaturas", findViewById(R.id.textCriaturas));
-        craituresViews.put("radioButton", findViewById(R.id.radioButton));
-        craituresViews.put("radioButton2", findViewById(R.id.radioButton2));
-        craituresViews.put("radioButton3", findViewById(R.id.radioButton3));
-        craituresViews.put("radioButton4", findViewById(R.id.radioButton4));
 
         //Inventario View
         BInventario = findViewById(R.id.botonInventario);
-        inventariViews.put("SV", findViewById(R.id.surfaceView));
-        //FindVIews de Botones
-        Bmenos2 = findViewById(R.id.bottonmenos2);
-        Bmas2 = findViewById(R.id.bottonmas2);
-        Bmenos1= findViewById(R.id.bottonmenos1);
-        Bmas1 = findViewById(R.id.bottonmas1);
-
-
-        //Funcion hacer visible Mapa
-        BMapa.setOnClickListener(v -> {
-            if(botonesMapaVisibles){
-                for (View item : mapaViews) {
-                    item.setVisibility(View.INVISIBLE);
-                }
-                botonesMapaVisibles = false;
-            } else {
-                for (View item : mapaViews) {
-                    item.setVisibility(View.VISIBLE);
-                }
-                botonesMapaVisibles = true;
-            }
-        });
-
-        //Funcion hacer visible Criaturas
-        BCriatura.setOnClickListener(v -> {
-            for (Map.Entry<String, View> entrada : craituresViews.entrySet()) {
-                View view = entrada.getValue();
-                if (botonCiaturasVisibles) {
-                    view.setVisibility(View.GONE);
-                } else {
-                    view.setVisibility(View.VISIBLE);
-
-                }
-            }
-            botonCiaturasVisibles = !botonCiaturasVisibles;
-        });
-
-        BInventario.setOnClickListener(v -> {
-            for (Map.Entry<String, View> entrada : inventariViews.entrySet()) {
-                View view = entrada.getValue();
-                if (botonInventarioVisible) {
-                    view.setVisibility(View.GONE);
-                } else {
-                    view.setVisibility(View.VISIBLE);
-
-                }
-            }
-            botonInventarioVisible = !botonInventarioVisible;
-        });
 
         //Crear la imagen del mapa en el Surface View
         context = getApplicationContext();
@@ -163,21 +114,19 @@ public class MainActivity extends AppCompatActivity {
         });
 
 
-
-
-
-        //BMapa.setOnClickListener (v -> dibuixaMapa());
-        Bmenos2.setOnClickListener(v -> ferZoomOut());
-        Bmas2.setOnClickListener(v -> ferZoomIn());
-        Bmenos1.setOnClickListener(v -> {
-            fe = zoomMaxim;
-            dibuixaMapa();
+        BMapa.setOnClickListener(v -> {
+            visibilizar("mapa");
         });
 
-        Bmas1.setOnClickListener(v -> {
-            fe = zoomMinim;
-            dibuixaMapa();
+        BCriatura.setOnClickListener(v -> {
+            visibilizar("criatures");
         });
+
+        BInventario.setOnClickListener(v -> {
+            visibilizar("inventari");
+        });
+
+
 
         //btnDreta.setOnClickListener(v -> moure(50, 0));
         //btnEsquerra.setOnClickListener(v -> moure(-50, 0));
@@ -186,29 +135,105 @@ public class MainActivity extends AppCompatActivity {
 
     }
     public void inicializarConjuntoMapa(){
-        // --- Asignar nombre a elementos ---
         SurfaceView sv = findViewById(R.id.surfaceView);
         TextView tv1 = findViewById(R.id.NomZONA);
         TextView tv2 = findViewById(R.id.PorcentajeZoom);
         TextView tv3 = findViewById(R.id.Puntos);
         TextView tv4 = findViewById(R.id.CercaZona);
-        Button bt1 = findViewById(R.id.bottonmenos2);
-        Button bt2 = findViewById(R.id.bottonmas2);
-        Button bt3 = findViewById(R.id.bottonmas1);
-        Button bt4 = findViewById(R.id.bottonmenos1);
 
-        // --- Añadir elementos al conjunto ---
+        Bmas1 = findViewById(R.id.bottonmas1);
+        Bmenos1 = findViewById(R.id.bottonmenos1);
+        Bmas2 = findViewById(R.id.bottonmas2);
+        Bmenos2 = findViewById(R.id.bottonmenos2);
+
+
         mapaViews = new UnsortedLinkedListSet<View>();
         mapaViews.add(sv);
         mapaViews.add(tv1);
         mapaViews.add(tv2);
         mapaViews.add(tv3);
         mapaViews.add(tv4);
-        mapaViews.add(bt1);
-        mapaViews.add(bt2);
-        mapaViews.add(bt3);
-        mapaViews.add(bt4);
+        mapaViews.add(Bmas1);
+        mapaViews.add(Bmenos1);
+        mapaViews.add(Bmas2);
+        mapaViews.add(Bmenos2);
+
+        Bmenos2.setOnClickListener(v -> ferZoomOut());
+        Bmas2.setOnClickListener(v -> ferZoomIn());
+        Bmenos1.setOnClickListener(v -> {
+            fe = zoomMinim;
+            dibuixaMapa();
+        });
+
+        Bmas1.setOnClickListener(v -> {
+            fe = zoomMaxim;
+            dibuixaMapa();
+        });
     }
+
+
+    public void inicializarConjuntoCriaturas(){
+        // --- Asignar nombre a elementos ---
+        SurfaceView sv2 = findViewById(R.id.surfaceView2);
+        TextView tv = findViewById(R.id.textCriaturas);
+        RadioButton rb1 = findViewById(R.id.radioButton);
+        RadioButton rb2 = findViewById(R.id.radioButton2);
+        RadioButton rb3 = findViewById(R.id.radioButton3);
+        RadioButton rb4 = findViewById(R.id.radioButton4);
+
+        // --- Añadir elementos al conjunto ---
+        craituresViews = new UnsortedLinkedListSet<View>();
+        craituresViews.add(sv2);
+        craituresViews.add(tv);
+        craituresViews.add(rb1);
+        craituresViews.add(rb2);
+        craituresViews.add(rb3);
+        craituresViews.add(rb4);
+    }
+
+    public void inicializarConjuntoInventario(){
+        // --- Asignar nombre a elementos ---
+        SurfaceView sv = findViewById(R.id.surfaceView);
+        Button bt1 = findViewById(R.id.bottonmenos2);
+        Button bt2 = findViewById(R.id.bottonmas2);
+        Button bt3 = findViewById(R.id.bottonmenos1);
+        Button bt4 = findViewById(R.id.bottonmas1);
+
+        // --- Añadir elementos al conjunto ---
+        inventariViews = new UnsortedLinkedListSet<View>();
+        inventariViews.add(sv);
+        inventariViews.add(bt1);
+        inventariViews.add(bt2);
+        inventariViews.add(bt3);
+        inventariViews.add(bt4);
+    }
+
+    private void visibilizar(String conjunto){
+        for (View view : mapaViews     ) view.setVisibility(View.INVISIBLE);
+        for (View view : craituresViews) view.setVisibility(View.INVISIBLE);
+        for (View view : inventariViews) view.setVisibility(View.INVISIBLE);
+
+        // Si el conjunto estaba visible, deja todos ocultos
+        if(conjunto.equals(conjuntoVisible)){
+            conjuntoVisible = "";
+        } else {
+            switch (conjunto){
+                case "mapa":
+                    for (View view : mapaViews) view.setVisibility(View.VISIBLE);
+                    conjuntoVisible = "mapa";
+                    break;
+                case "criatures":
+                    for (View view : craituresViews) view.setVisibility(View.VISIBLE);
+                    conjuntoVisible = "criatures";
+                    break;
+                case "inventari":
+                    for (View view : inventariViews) view.setVisibility(View.VISIBLE);
+                    conjuntoVisible = "inventari";
+                    break;
+            }
+        }
+    }
+
 
     private void dibuixaImatge() {
         if (SV.getHolder().getSurface().isValid()) {
