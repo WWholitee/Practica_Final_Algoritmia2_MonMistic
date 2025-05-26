@@ -10,6 +10,8 @@ import android.graphics.Paint;
 import android.graphics.Rect;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.MotionEvent;
+import android.view.ScaleGestureDetector;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
@@ -50,6 +52,16 @@ public class MainActivity extends AppCompatActivity {
     private float zoomMinim;     // Zoom mínim (veure tot el mapa)
     private float zoomMaxim;     // Zoom màxim (detall)
     private float incrementZoom; // Pas de zoom
+
+    ////seguimiento de los dedos
+    private float cursorX,cursorY;
+    private boolean Moviendo = false;
+    private float DistanciaInicial= -1; //Gesto zoom
+    private float ZoomInicial= 1f; //zoom inicial gesto pellizco
+
+    private ScaleGestureDetector scaleDetector;
+    private boolean Escalando = false;
+
             // La imatge del mapa
     //////////////////////////////////////////////////////////////////////////////////////////
 
@@ -85,7 +97,7 @@ public class MainActivity extends AppCompatActivity {
         SV = findViewById(R.id.surfaceView);
 
         // Carreguem la imatge només una vegada
-        bmp = BitmapFactory.decodeResource(context.getResources(), R.drawable.mapam); // substitueix "teva_imatge" pel nom real
+        bmp = BitmapFactory.decodeResource(context.getResources(), R.drawable.mapam);
 
         // Esperem que la vista estigui creada
         SV.getHolder().addCallback(new SurfaceHolder.Callback() {
@@ -132,6 +144,9 @@ public class MainActivity extends AppCompatActivity {
         //btnEsquerra.setOnClickListener(v -> moure(-50, 0));
         //btnAmunt.setOnClickListener(v -> moure(0, -50));
         //btnAvall.setOnClickListener(v -> moure(0, 50));
+
+        //Inicializador de detector de gestos
+        scaleDetector = new ScaleGestureDetector(this,new ScaleListener());
 
     }
     public void inicializarConjuntoMapa(){
@@ -306,7 +321,116 @@ public class MainActivity extends AppCompatActivity {
            dibuixaMapa();
        }
 
+    /////////P2 USO DE LOS DEDOS
 
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        // Primero procesamos el gesto de zoom
+        scaleDetector.onTouchEvent(event);
+
+        // Si zoom nada
+        if (Escalando) {
+            return true;
+        }
+
+        switch (event.getAction() & MotionEvent.ACTION_MASK) {
+            case MotionEvent.ACTION_DOWN:
+                handleTouchDown(event);
+                break;
+
+            case MotionEvent.ACTION_MOVE:
+                if (event.getPointerCount() == 1) {
+                    handleMove(event);
+                }
+                break;
+
+            case MotionEvent.ACTION_UP:
+                handleTouchUp(event);
+                break;
+        }
+
+        return true;
+    }
+    private void handleTouchDown(MotionEvent event) {
+        if (!Escalando) {
+            cursorX = event.getX();
+            cursorY = event.getY();
+            Moviendo = true;
+        }
+    }
+
+    private void handleMove(MotionEvent event) {
+        if (Moviendo && !Escalando) {
+            float x = event.getX();
+            float y = event.getY();
+
+            float dx = (x - cursorX) / fe;
+            float dy = (y - cursorY) / fe;
+
+            Cx -= dx;
+            Cy -= dy;
+
+            // Limitar al tamaño del mapa
+            Cx = Math.max(0, Math.min(bmp.getWidth(), Cx));
+            Cy = Math.max(0, Math.min(bmp.getHeight(), Cy));
+
+            cursorX = x;
+            cursorY = y;
+
+            dibuixaMapa();
+        }
+    }
+
+    private void handleTouchUp(MotionEvent event) {
+        Moviendo = false;
+    }
+    private class ScaleListener extends ScaleGestureDetector.SimpleOnScaleGestureListener {
+        @Override
+        public boolean onScaleBegin(ScaleGestureDetector detector) {
+            Escalando = true;
+            return true;
+        }
+
+        @Override
+        public boolean onScale(ScaleGestureDetector detector) {
+            float scaleFactor = detector.getScaleFactor();
+
+            float newFe = fe * scaleFactor;
+
+            newFe = Math.max(zoomMinim, Math.min(newFe, zoomMaxim));
+
+            // Si el zoom ha cambiado lo cambiamos
+            if (newFe != fe) {
+                fe = newFe;
+
+                float focusX = detector.getFocusX();
+                float focusY = detector.getFocusY();
+                adjustCenterForZoom(focusX, focusY, scaleFactor);
+
+                dibuixaMapa();
+            }
+
+            return true;
+        }
+
+        @Override
+        public void onScaleEnd(ScaleGestureDetector detector) {
+            Escalando = false;
+        }
+    }
+    private void adjustCenterForZoom(float focusX, float focusY, float scaleFactor) {
+        // Convertir coordenadas de pantalla a coordenadas del mapa
+        float mapFocusX = Cx + (focusX - SV.getWidth()/2f) / fe;
+        float mapFocusY = Cy + (focusY - SV.getHeight()/2f) / fe;
+
+        // Ajustar el centro
+        Cx = mapFocusX - (mapFocusX - Cx) / scaleFactor;
+        Cy = mapFocusY - (mapFocusY - Cy) / scaleFactor;
+
+        //no salir limites
+        Cx = Math.max(0, Math.min(bmp.getWidth(), Cx));
+        Cy = Math.max(0, Math.min(bmp.getHeight(), Cy));
+    }
 
 
 
