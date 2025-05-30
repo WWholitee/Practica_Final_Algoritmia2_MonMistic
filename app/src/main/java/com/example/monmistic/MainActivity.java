@@ -36,8 +36,9 @@ public class MainActivity extends AppCompatActivity {
 
     //////INICIALIZACIONES
     public Button BMapa, BCriatura, BInventario, Bmenos1, Bmenos2, Bmas1, Bmas2;
-    //private TextView PZoom, NomZona, Puntos, textCriaturas;
+    //private NomZona, Puntos, textCriaturas;
     //private EditText CercaZona;
+    private TextView textViewZoom;
     private SurfaceView SV, SV2;
     UnsortedLinkedListSet<View> mapaViews;
     UnsortedLinkedListSet<View> craituresViews;
@@ -106,14 +107,14 @@ public class MainActivity extends AppCompatActivity {
                 // Ahora sí se puede acceder a tamaño real del SurfaceView
                 zoomMinim = (float) SV.getHeight() / bmp.getHeight();  // Veure tota la imatge
                 zoomMaxim = zoomMinim * 10;  // Zoom detallat
-                incrementZoom = zoomMinim / 4; // Zoom progressiu
+                incrementZoom = zoomMaxim / 50; // Zoom progressiu
 
                 // Centrat inicial (centre del mapa)
                 Cx = bmp.getWidth() / 2f;
                 Cy = bmp.getHeight() / 2f;
 
                 // Escalat inicial
-                fe = zoomMinim;
+                fe = zoomMaxim/2;
 
                 dibuixaMapa();  // Mostrar mapa amb zoom inicial
             }
@@ -152,20 +153,19 @@ public class MainActivity extends AppCompatActivity {
     public void inicializarConjuntoMapa(){
         SurfaceView sv = findViewById(R.id.surfaceView);
         TextView tv1 = findViewById(R.id.NomZONA);
-        TextView tv2 = findViewById(R.id.PorcentajeZoom);
         TextView tv3 = findViewById(R.id.Puntos);
         TextView tv4 = findViewById(R.id.CercaZona);
 
+        textViewZoom = findViewById(R.id.PorcentajeZoom);
         Bmas1 = findViewById(R.id.bottonmas1);
         Bmenos1 = findViewById(R.id.bottonmenos1);
         Bmas2 = findViewById(R.id.bottonmas2);
         Bmenos2 = findViewById(R.id.bottonmenos2);
 
-
         mapaViews = new UnsortedLinkedListSet<View>();
         mapaViews.add(sv);
         mapaViews.add(tv1);
-        mapaViews.add(tv2);
+        mapaViews.add(textViewZoom);
         mapaViews.add(tv3);
         mapaViews.add(tv4);
         mapaViews.add(Bmas1);
@@ -209,18 +209,10 @@ public class MainActivity extends AppCompatActivity {
     public void inicializarConjuntoInventario(){
         // --- Asignar nombre a elementos ---
         SurfaceView sv = findViewById(R.id.surfaceView);
-        Button bt1 = findViewById(R.id.bottonmenos2);
-        Button bt2 = findViewById(R.id.bottonmas2);
-        Button bt3 = findViewById(R.id.bottonmenos1);
-        Button bt4 = findViewById(R.id.bottonmas1);
 
         // --- Añadir elementos al conjunto ---
         inventariViews = new UnsortedLinkedListSet<View>();
         inventariViews.add(sv);
-        inventariViews.add(bt1);
-        inventariViews.add(bt2);
-        inventariViews.add(bt3);
-        inventariViews.add(bt4);
     }
 
     private void visibilizar(String conjunto){
@@ -292,6 +284,8 @@ public class MainActivity extends AppCompatActivity {
            canvas.drawColor(Color.BLACK);
            canvas.drawBitmap(bmp, src, dst, new Paint());
            SV.getHolder().unlockCanvasAndPost(canvas);
+
+           textViewZoom.setText(String.format("x %.2f", fe/zoomMaxim));
        }
     }
 
@@ -299,8 +293,10 @@ public class MainActivity extends AppCompatActivity {
         Log.d("ZOOM", "Zoom In");
         if (fe + incrementZoom <= zoomMaxim) {
             fe += incrementZoom;
-            dibuixaMapa();
+        } else {
+            fe = zoomMaxim;
         }
+        dibuixaMapa();
     }
 
        private void ferZoomOut() {
@@ -308,8 +304,10 @@ public class MainActivity extends AppCompatActivity {
 
            if (fe - incrementZoom >= zoomMinim) {
                fe -= incrementZoom;
-               dibuixaMapa();
+           } else {
+               fe = zoomMinim;
            }
+           dibuixaMapa();
        }
 
        private void moure(int dx, int dy) {
@@ -409,7 +407,6 @@ public class MainActivity extends AppCompatActivity {
 
                 dibuixaMapa();
             }
-
             return true;
         }
 
@@ -432,11 +429,5 @@ public class MainActivity extends AppCompatActivity {
         Cy = Math.max(0, Math.min(bmp.getHeight(), Cy));
     }
 
-
-
-   }
-
-
-
-
+}
 
