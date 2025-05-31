@@ -272,10 +272,10 @@ public class MainActivity extends AppCompatActivity {
            float y2 = Cy + h_ / 2f;
 
            // Assegurem límits perquè no surti fora de la imatge
-           x1 = Math.max(0, x1);
-           y1 = Math.max(0, y1);
-           x2 = Math.min(bmp.getWidth(), x2);
-           y2 = Math.min(bmp.getHeight(), y2);
+           x1 = Math.min(Math.max(0, x1), bmp.getWidth() - w_);
+           y1 = Math.min(Math.max(0, y1), bmp.getHeight() - h_);
+           x2 = Math.max(Math.min(bmp.getWidth(), x2),w_);
+           y2 = Math.max(Math.min(bmp.getHeight(), y2),h_);
 
            Rect src = new Rect((int)x1, (int)y1, (int)x2, (int)y2);
            Rect dst = new Rect(0, 0, amplaPantalla, altPantalla);
