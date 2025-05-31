@@ -1,5 +1,8 @@
 package com.example.monmistic;
 
+import android.animation.AnimatorSet;
+import android.animation.ObjectAnimator;
+import android.app.Dialog;
 import android.content.Context;
 import android.content.pm.ActivityInfo;
 import android.graphics.Bitmap;
@@ -8,21 +11,27 @@ import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Rect;
+import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
+import android.os.CountDownTimer;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
+import android.view.animation.LinearInterpolator;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.RadioButton;
 import android.widget.TextView;
 import android.widget.EditText;
+import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -36,7 +45,7 @@ public class MainActivity extends AppCompatActivity {
 
     //////INICIALIZACIONES
     public Button BMapa, BCriatura, BInventario, Bmenos1, Bmenos2, Bmas1, Bmas2;
-    //private NomZona, Puntos, textCriaturas;
+    //private NomZona, Puntos;
     //private EditText CercaZona;
     private TextView textViewZoom;
     private SurfaceView SV, SV2;
@@ -44,6 +53,7 @@ public class MainActivity extends AppCompatActivity {
     UnsortedLinkedListSet<View> craituresViews;
     UnsortedLinkedListSet<View> inventariViews;
     private String conjuntoVisible = ""; // "mapa", "criaturas", "inventario", ""
+    Map<String, String> reglesDeJoc;
 
 
     private Context context;
@@ -76,6 +86,7 @@ public class MainActivity extends AppCompatActivity {
         inicializarConjuntoMapa();
         inicializarConjuntoCriaturas();
         inicializarConjuntoInventario();
+        inicialitzarReglesJoc();
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
@@ -136,6 +147,7 @@ public class MainActivity extends AppCompatActivity {
         });
 
         BInventario.setOnClickListener(v -> {
+            combat(); // Provisional
             visibilizar("inventari");
         });
 
@@ -190,7 +202,6 @@ public class MainActivity extends AppCompatActivity {
     public void inicializarConjuntoCriaturas(){
         // --- Asignar nombre a elementos ---
         SurfaceView sv2 = findViewById(R.id.surfaceView2);
-        TextView tv = findViewById(R.id.textCriaturas);
         RadioButton rb1 = findViewById(R.id.radioButton);
         RadioButton rb2 = findViewById(R.id.radioButton2);
         RadioButton rb3 = findViewById(R.id.radioButton3);
@@ -199,7 +210,6 @@ public class MainActivity extends AppCompatActivity {
         // --- Añadir elementos al conjunto ---
         craituresViews = new UnsortedLinkedListSet<View>();
         craituresViews.add(sv2);
-        craituresViews.add(tv);
         craituresViews.add(rb1);
         craituresViews.add(rb2);
         craituresViews.add(rb3);
@@ -241,6 +251,130 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private void inicialitzarReglesJoc() {
+        reglesDeJoc = new HashMap<>();
+        reglesDeJoc.put("pedra", "tisores");   // pedra guanya a tisores
+        reglesDeJoc.put("tisores", "paper");   // tisores guanya a paper
+        reglesDeJoc.put("paper", "pedra");     // paper guanya a pedra
+    }
+    private void combat(){
+        Dialog dialog = new Dialog(findViewById(R.id.surfaceView).getContext());
+        dialog.setContentView(R.layout.dialog);
+        dialog.getWindow().setLayout(SV.getWidth(), SV.getHeight());
+        dialog.setCancelable(false);
+        dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        //dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.parseColor("#77000000")));
+
+        // Vincula els components del layout
+        TextView textResultat = dialog.findViewById(R.id.resultat);
+        ImageView imgCriatura = dialog.findViewById(R.id.imageCriatura);
+
+        Button botoPedra = dialog.findViewById(R.id.buttonPedra);
+        Button botoPaper = dialog.findViewById(R.id.buttonPaper);
+        Button botoTisores = dialog.findViewById(R.id.buttonTisores);
+
+        Button botoResposta = dialog.findViewById(R.id.buttonResposta);
+        botoResposta.setVisibility(View.INVISIBLE);
+
+        String[] opcions = {"pedra", "paper", "tisores"};
+
+        View.OnClickListener listener = v -> {
+            String eleccioJugador = "";
+
+            // Elecció del jugador
+            if (v.getId() == R.id.buttonPedra) {
+                eleccioJugador = opcions[0];
+            } else if (v.getId() == R.id.buttonPaper) {
+                eleccioJugador = opcions[1];
+            } else if (v.getId() == R.id.buttonTisores) {
+                eleccioJugador = opcions[2];
+            }
+
+            // Elecció de la criatura
+            String eleccioCriatura = opcions[(int) (Math.random() * 3)];
+            // Imatge de l'elecció de la criatura
+            if(eleccioCriatura == "pedra"){
+                botoResposta.setForeground(ContextCompat.getDrawable(context,R.drawable.pedra));
+            } else if(eleccioCriatura == "paper"){
+                botoResposta.setForeground(ContextCompat.getDrawable(context,R.drawable.paper));
+            } else if(eleccioCriatura == "tisores"){
+                botoResposta.setForeground(ContextCompat.getDrawable(context,R.drawable.tisores));
+            }
+            botoResposta.setVisibility(View.VISIBLE);
+
+            Context context = getApplicationContext () ;
+            int duration = Toast.LENGTH_LONG;
+
+            if (eleccioJugador.equals(eleccioCriatura)) {
+                // Si les eleccions son iguals es empat
+            } else if (reglesDeJoc.get(eleccioJugador).equals(eleccioCriatura)) {
+                // Si l'elecció del jugador apunta a la de la criatura en el HashMap, llavors
+                // el jugador guanya
+                //CharSequence text = "Has capturat un " + nomEspecie;
+                if(eleccioJugador == "pedra"){
+                    botoPedra.setForeground(ContextCompat.getDrawable(context,R.drawable.pedrax));
+                } else if(eleccioJugador == "paper"){
+                    botoPaper.setForeground(ContextCompat.getDrawable(context,R.drawable.paperx));
+                } else if(eleccioJugador == "tisores"){
+                    botoTisores.setForeground(ContextCompat.getDrawable(context,R.drawable.tisoresx));
+                }
+                CharSequence text = "Has capturat un Pokemon";
+                textResultat.setText(text);
+                Toast toast = Toast.makeText(context,text,duration);
+                toast.show();
+            } else {
+                // el jugador perd si no es cumpleix cap cas anterior
+
+
+                //CharSequence text = "S’ha escapat un " + nomEspecie;
+
+                CharSequence text = "Has capturat un Digimon";
+                textResultat.setText(text);
+                Toast toast = Toast.makeText(context,text,duration);
+                toast.show();
+            }
+
+            // Inhabilita els botons temporalment per forçar una espera abans de seguir jugant
+            botoPedra.setEnabled(false);
+            botoPaper.setEnabled(false);
+            botoTisores.setEnabled(false);
+
+            new CountDownTimer(2000, 1000) {
+                @Override public void onTick(long millisUntilFinished) {
+
+                }
+                @Override public void onFinish() {
+                    // Reactiva els botons per a la següent jugada
+                    botoPedra.setEnabled(true);
+                    botoPaper.setEnabled(true);
+                    botoTisores.setEnabled(true);
+
+                    ferAnimacioEspera(botoPedra);
+                    ferAnimacioEspera(botoPaper);
+                    ferAnimacioEspera(botoTisores);
+                }
+            }.start();
+
+        };
+
+        botoPedra.setOnClickListener(listener);
+        botoPaper.setOnClickListener(listener);
+        botoTisores.setOnClickListener(listener);
+
+
+        dialog.show();
+    }
+
+    private void ferAnimacioEspera(View boto) {
+        ObjectAnimator scaleX = ObjectAnimator.ofFloat(boto, "scaleX", 1f, 1.1f, 1f);
+        ObjectAnimator scaleY = ObjectAnimator.ofFloat(boto, "scaleY", 1f, 1.1f, 1f);
+
+        AnimatorSet set = new AnimatorSet();
+        set.playTogether(scaleX, scaleY);
+        set.setDuration(500);
+        set.setInterpolator(new LinearInterpolator());
+        set.start();
+    }
 
     private void dibuixaImatge() {
         if (SV.getHolder().getSurface().isValid()) {

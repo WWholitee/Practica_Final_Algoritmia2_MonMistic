@@ -209,10 +209,24 @@
         android:orientation="horizontal"
         app:layout_constraintGuide_begin="40dp" />
 
+    <!--
+    <TextView
+        android:id="@+id/textCriaturas"
+        android:layout_width="450dp"
+        android:layout_height="350dp"
+        android:background="@drawable/forma"
+        android:text="TextView"
+        android:visibility="invisible"
+        app:layout_constraintBottom_toBottomOf="@+id/surfaceView2"
+        app:layout_constraintEnd_toEndOf="@+id/surfaceView2"
+        app:layout_constraintTop_toTopOf="@+id/surfaceView2"
+        app:layout_constraintVertical_bias="0.0" />
+    -->
+
     <SurfaceView
         android:id="@+id/surfaceView"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
+        android:layout_width="450dp"
+        android:layout_height="350dp"
         android:visibility="invisible"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintDimensionRatio="3:2"
@@ -222,26 +236,14 @@
 
     <SurfaceView
         android:id="@+id/surfaceView2"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
+        android:layout_width="450dp"
+        android:layout_height="350dp"
         android:visibility="invisible"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintDimensionRatio="3:2"
         app:layout_constraintEnd_toStartOf="@+id/guideline3"
         app:layout_constraintStart_toStartOf="@+id/guideline10"
         app:layout_constraintTop_toTopOf="@+id/guideline15" />
-
-    <TextView
-        android:id="@+id/textCriaturas"
-        android:layout_width="452dp"
-        android:layout_height="307dp"
-        android:background="@drawable/forma"
-        android:text="TextView"
-        android:visibility="invisible"
-        app:layout_constraintBottom_toBottomOf="@+id/surfaceView2"
-        app:layout_constraintEnd_toEndOf="@+id/surfaceView2"
-        app:layout_constraintTop_toTopOf="@+id/surfaceView2"
-        app:layout_constraintVertical_bias="0.0" />
 
     <RadioButton
         android:id="@+id/radioButton"
