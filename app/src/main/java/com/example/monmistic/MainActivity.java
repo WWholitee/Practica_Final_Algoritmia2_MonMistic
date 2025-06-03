@@ -54,6 +54,7 @@ public class MainActivity extends AppCompatActivity {
     public Button BMapa, BCriatura, BInventario, Bmenos1, Bmenos2, Bmas1, Bmas2;
     private TextView textViewNomZona;
     private TextView textViewPuntos;
+    private int puntos;
     private EditText editTextCercaZona;
     private TextView textViewZoom;
     private SurfaceView SV, SV2;
@@ -450,6 +451,43 @@ public class MainActivity extends AppCompatActivity {
             Canvas canvas = SV.getHolder().lockCanvas();
             canvas.drawColor(Color.BLACK);
             canvas.drawBitmap(bmp, src, dst, new Paint());
+
+            boolean hiHaCriatures = false;
+
+            if (hiHaCriatures){
+                Paint circlePaint = new Paint();
+                circlePaint.setColor(Color.WHITE); // Color del cercle
+                circlePaint.setStyle(Paint.Style.STROKE); // Dibuixa només el contorn
+                circlePaint.setStrokeWidth(5); // Gruix del contorn del cercle
+
+                // Calcula el centre del SurfaceView
+                float centerX = amplaPantalla / 2f;
+                float centerY = altPantalla / 2f;
+
+                // Defineix el radi del cercle
+                float radius = 30; // Ajusta aquest valor per fer el cercle més gran o més petit
+
+                // Dibuixa el cercle
+                canvas.drawCircle(centerX, centerY, radius, circlePaint);
+            } else {
+                Paint crosshairPaint = new Paint();
+                crosshairPaint.setColor(Color.WHITE); // Color of the crosshair
+                crosshairPaint.setStrokeWidth(5); // Thickness of the crosshair lines
+
+                // Calculate the center of the SurfaceView
+                float centerX = amplaPantalla / 2f;
+                float centerY = altPantalla / 2f;
+
+                // Define the length of the crosshair arms
+                float armLength = 30; // Adjust this value to make the crosshair larger or smaller
+
+                // Draw horizontal line of the crosshair
+                canvas.drawLine(centerX - armLength, centerY, centerX + armLength, centerY, crosshairPaint);
+
+                // Draw vertical line of the crosshair
+                canvas.drawLine(centerX, centerY - armLength, centerX, centerY + armLength, crosshairPaint);
+            }
+
             SV.getHolder().unlockCanvasAndPost(canvas);
 
             textViewZoom.setText(String.format("x %.2f", fe/zoomMaxim));
@@ -636,9 +674,8 @@ public class MainActivity extends AppCompatActivity {
 
             Zona zonaActual = findZoneAtCurrentMapCenter(mapCenterX, mapCenterY);
             if (zonaActual != null) {
-                textViewNomZona.setText("Zona: " + zonaActual.getNomOficial());
+                textViewNomZona.setText(" " + zonaActual.getNomOficial());
             } else {
-                textViewNomZona.setText("Zona: Desconeguda");
             }
         }
     }
