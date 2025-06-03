@@ -10,6 +10,7 @@ import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
+// import android.graphics.Rect; // REMOVED
 import android.graphics.Rect;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
@@ -36,44 +37,54 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.jar.Attributes;
-
+import java.util.TreeMap;
+import java.util.ArrayList;
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
     //////INICIALIZACIONES
     public Button BMapa, BCriatura, BInventario, Bmenos1, Bmenos2, Bmas1, Bmas2;
-    //private NomZona, Puntos;
-    //private EditText CercaZona;
+    private TextView textViewNomZona;
+    private TextView textViewPuntos;
+    private EditText editTextCercaZona;
     private TextView textViewZoom;
     private SurfaceView SV, SV2;
+
+    String contingutJSON;
     UnsortedLinkedListSet<View> mapaViews;
     UnsortedLinkedListSet<View> craituresViews;
     UnsortedLinkedListSet<View> inventariViews;
-    private String conjuntoVisible = ""; // "mapa", "criaturas", "inventario", ""
+    private String conjuntoVisible = "";
     Map<String, String> reglesDeJoc;
 
+    private ZonaTrie catalegZonesTrie;
+    TreeMap<String, Zona> catalegZonesMapa = new TreeMap<>();
 
     private Context context;
-    private Bitmap bmp;// imagen del mapa
-    private float Cx, Cy;        // Coordenades centrals (en píxels dins del mapa)
-    private float fe;            // Factor d'escalat actual (zoom)
-    private float zoomMinim;     // Zoom mínim (veure tot el mapa)
-    private float zoomMaxim;     // Zoom màxim (detall)
-    private float incrementZoom; // Pas de zoom
+    private Bitmap bmp;
+    private float Cx, Cy;
+    private float fe;
+    private float zoomMinim;
+    private float zoomMaxim;
+    private float incrementZoom;
 
     ////seguimiento de los dedos
     private float cursorX,cursorY;
     private boolean Moviendo = false;
-    private float DistanciaInicial= -1; //Gesto zoom
-    private float ZoomInicial= 1f; //zoom inicial gesto pellizco
 
     private ScaleGestureDetector scaleDetector;
     private boolean Escalando = false;
 
-            // La imatge del mapa
+    private CountDownTimer zoneUpdateTimer;
+
     //////////////////////////////////////////////////////////////////////////////////////////
 
     @Override
@@ -82,6 +93,8 @@ public class MainActivity extends AppCompatActivity {
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_main);
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
+
+        catalegZonesTrie = new ZonaTrie();
 
         inicializarConjuntoMapa();
         inicializarConjuntoCriaturas();
@@ -94,79 +107,78 @@ public class MainActivity extends AppCompatActivity {
             return insets;
         });
 
-
-        //Mapa View
         BMapa = findViewById(R.id.botonMapa);
-
-        //Criaturas View
         BCriatura = findViewById(R.id.botonCriatura);
-
-        //Inventario View
         BInventario = findViewById(R.id.botonInventario);
 
-        //Crear la imagen del mapa en el Surface View
         context = getApplicationContext();
         SV = findViewById(R.id.surfaceView);
 
-        // Carreguem la imatge només una vegada
-        bmp = BitmapFactory.decodeResource(context.getResources(), R.drawable.mapam);
+        BitmapFactory.Options opcions = new BitmapFactory.Options () ;
+        opcions.inScaled = false ;
 
-        // Esperem que la vista estigui creada
+        bmp = BitmapFactory.decodeResource(context.getResources(), R.drawable.mapam, opcions);
+
+        contingutJSON = llegirJSON(context, R.raw.zones);
+        crearEstructuresDeDadesDeZones(contingutJSON);
+
         SV.getHolder().addCallback(new SurfaceHolder.Callback() {
             @Override
             public void surfaceCreated(@NonNull SurfaceHolder holder) {
-                // Ahora sí se puede acceder a tamaño real del SurfaceView
-                zoomMinim = (float) SV.getHeight() / bmp.getHeight();  // Veure tota la imatge
-                zoomMaxim = zoomMinim * 10;  // Zoom detallat
-                incrementZoom = zoomMaxim / 50; // Zoom progressiu
+                zoomMinim = (float) SV.getHeight() / bmp.getHeight();
+                zoomMaxim = zoomMinim * 10;
+                incrementZoom = zoomMaxim / 50;
 
-                // Centrat inicial (centre del mapa)
                 Cx = bmp.getWidth() / 2f;
                 Cy = bmp.getHeight() / 2f;
 
-                // Escalat inicial
                 fe = zoomMaxim/2;
 
-                dibuixaMapa();  // Mostrar mapa amb zoom inicial
+                dibuixaMapa();
+                actualitzaInformacioZonaActual();
+
+                iniciarTemporitzadorActualitzacioZona();
             }
 
             @Override
             public void surfaceChanged(@NonNull SurfaceHolder holder, int format, int width, int height) {}
 
             @Override
-            public void surfaceDestroyed(@NonNull SurfaceHolder holder) {}
+            public void surfaceDestroyed(@NonNull SurfaceHolder holder) {
+                if (zoneUpdateTimer != null) {
+                    zoneUpdateTimer.cancel();
+                }
+            }
         });
-
 
         BMapa.setOnClickListener(v -> {
             visibilizar("mapa");
+            iniciarTemporitzadorActualitzacioZona();
         });
 
         BCriatura.setOnClickListener(v -> {
             visibilizar("criatures");
+            if (zoneUpdateTimer != null) {
+                zoneUpdateTimer.cancel();
+            }
         });
 
         BInventario.setOnClickListener(v -> {
-            combat(); // Provisional
+            combat();
             visibilizar("inventari");
+            if (zoneUpdateTimer != null) {
+                zoneUpdateTimer.cancel();
+            }
         });
 
-
-
-        //btnDreta.setOnClickListener(v -> moure(50, 0));
-        //btnEsquerra.setOnClickListener(v -> moure(-50, 0));
-        //btnAmunt.setOnClickListener(v -> moure(0, -50));
-        //btnAvall.setOnClickListener(v -> moure(0, 50));
-
-        //Inicializador de detector de gestos
         scaleDetector = new ScaleGestureDetector(this,new ScaleListener());
-
     }
+
     public void inicializarConjuntoMapa(){
         SurfaceView sv = findViewById(R.id.surfaceView);
-        TextView tv1 = findViewById(R.id.NomZONA);
-        TextView tv3 = findViewById(R.id.Puntos);
-        TextView tv4 = findViewById(R.id.CercaZona);
+        textViewNomZona = findViewById(R.id.NomZONA);
+        textViewPuntos = findViewById(R.id.Puntos);
+        editTextCercaZona = findViewById(R.id.CercaZona);
 
         textViewZoom = findViewById(R.id.PorcentajeZoom);
         Bmas1 = findViewById(R.id.bottonmas1);
@@ -176,38 +188,77 @@ public class MainActivity extends AppCompatActivity {
 
         mapaViews = new UnsortedLinkedListSet<View>();
         mapaViews.add(sv);
-        mapaViews.add(tv1);
+        mapaViews.add(textViewNomZona);
+        mapaViews.add(textViewPuntos);
+        mapaViews.add(editTextCercaZona);
         mapaViews.add(textViewZoom);
-        mapaViews.add(tv3);
-        mapaViews.add(tv4);
         mapaViews.add(Bmas1);
         mapaViews.add(Bmenos1);
         mapaViews.add(Bmas2);
         mapaViews.add(Bmenos2);
 
-        Bmenos2.setOnClickListener(v -> ferZoomOut());
-        Bmas2.setOnClickListener(v -> ferZoomIn());
+        Bmenos2.setOnClickListener(v -> {
+            ferZoomOut();
+            actualitzaInformacioZonaActual();
+        });
+        Bmas2.setOnClickListener(v -> {
+            ferZoomIn();
+            actualitzaInformacioZonaActual();
+        });
         Bmenos1.setOnClickListener(v -> {
             fe = zoomMinim;
             dibuixaMapa();
+            actualitzaInformacioZonaActual();
         });
 
         Bmas1.setOnClickListener(v -> {
             fe = zoomMaxim;
             dibuixaMapa();
+            actualitzaInformacioZonaActual();
+        });
+
+        editTextCercaZona.setOnEditorActionListener((v, actionId, event) -> {
+            if (actionId == android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH ||
+                    (event != null && event.getKeyCode() == android.view.KeyEvent.KEYCODE_ENTER && event.getAction() == android.view.KeyEvent.ACTION_DOWN)) {
+                String nomBuscado = editTextCercaZona.getText().toString();
+                Zona zonaTrobadad = catalegZonesTrie.search(nomBuscado);
+                if (zonaTrobadad != null) {
+                    float zonaCenterX = (zonaTrobadad.getX1() + zonaTrobadad.getX2()) / 2f;
+                    float zonaCenterY = (zonaTrobadad.getY1() + zonaTrobadad.getY2()) / 2f;
+
+                    Cx = zonaCenterX;
+                    Cy = zonaCenterY;
+
+                    float zonaWidth = zonaTrobadad.getX2() - zonaTrobadad.getX1();
+                    float zonaHeight = zonaTrobadad.getY2() - zonaTrobadad.getY1();
+
+                    float scaleX = (float) SV.getWidth() / zonaWidth;
+                    float scaleY = (float) SV.getHeight() / zonaHeight;
+                    fe = Math.min(scaleX, scaleY) * 0.9f;
+
+                    fe = Math.max(zoomMinim, Math.min(fe, zoomMaxim));
+
+                    dibuixaMapa();
+                    actualitzaInformacioZonaActual();
+                    Toast.makeText(context, "Zona trobada: " + zonaTrobadad.getNomOficial(), Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(context, "Zona no trobada: " + nomBuscado, Toast.LENGTH_SHORT).show();
+                }
+                android.view.inputmethod.InputMethodManager imm = (android.view.inputmethod.InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+                imm.hideSoftInputFromWindow(editTextCercaZona.getWindowToken(), 0);
+                return true;
+            }
+            return false;
         });
     }
 
-
     public void inicializarConjuntoCriaturas(){
-        // --- Asignar nombre a elementos ---
         SurfaceView sv2 = findViewById(R.id.surfaceView2);
         RadioButton rb1 = findViewById(R.id.radioButton);
         RadioButton rb2 = findViewById(R.id.radioButton2);
         RadioButton rb3 = findViewById(R.id.radioButton3);
         RadioButton rb4 = findViewById(R.id.radioButton4);
 
-        // --- Añadir elementos al conjunto ---
         craituresViews = new UnsortedLinkedListSet<View>();
         craituresViews.add(sv2);
         craituresViews.add(rb1);
@@ -217,10 +268,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void inicializarConjuntoInventario(){
-        // --- Asignar nombre a elementos ---
         SurfaceView sv = findViewById(R.id.surfaceView);
 
-        // --- Añadir elementos al conjunto ---
         inventariViews = new UnsortedLinkedListSet<View>();
         inventariViews.add(sv);
     }
@@ -230,7 +279,6 @@ public class MainActivity extends AppCompatActivity {
         for (View view : craituresViews) view.setVisibility(View.INVISIBLE);
         for (View view : inventariViews) view.setVisibility(View.INVISIBLE);
 
-        // Si el conjunto estaba visible, deja todos ocultos
         if(conjunto.equals(conjuntoVisible)){
             conjuntoVisible = "";
         } else {
@@ -253,19 +301,18 @@ public class MainActivity extends AppCompatActivity {
 
     private void inicialitzarReglesJoc() {
         reglesDeJoc = new HashMap<>();
-        reglesDeJoc.put("pedra", "tisores");   // pedra guanya a tisores
-        reglesDeJoc.put("tisores", "paper");   // tisores guanya a paper
-        reglesDeJoc.put("paper", "pedra");     // paper guanya a pedra
+        reglesDeJoc.put("pedra", "tisores");
+        reglesDeJoc.put("tisores", "paper");
+        reglesDeJoc.put("paper", "pedra");
     }
+
     private void combat(){
         Dialog dialog = new Dialog(findViewById(R.id.surfaceView).getContext());
         dialog.setContentView(R.layout.dialog);
         dialog.getWindow().setLayout(SV.getWidth(), SV.getHeight());
         dialog.setCancelable(false);
         dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
-        //dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.parseColor("#77000000")));
 
-        // Vincula els components del layout
         TextView textResultat = dialog.findViewById(R.id.resultat);
         ImageView imgCriatura = dialog.findViewById(R.id.imageCriatura);
 
@@ -281,7 +328,6 @@ public class MainActivity extends AppCompatActivity {
         View.OnClickListener listener = v -> {
             String eleccioJugador = "";
 
-            // Elecció del jugador
             if (v.getId() == R.id.buttonPedra) {
                 eleccioJugador = opcions[0];
             } else if (v.getId() == R.id.buttonPaper) {
@@ -290,9 +336,7 @@ public class MainActivity extends AppCompatActivity {
                 eleccioJugador = opcions[2];
             }
 
-            // Elecció de la criatura
             String eleccioCriatura = opcions[(int) (Math.random() * 3)];
-            // Imatge de l'elecció de la criatura
             if(eleccioCriatura == "pedra"){
                 botoResposta.setForeground(ContextCompat.getDrawable(context,R.drawable.pedra));
             } else if(eleccioCriatura == "paper"){
@@ -306,11 +350,7 @@ public class MainActivity extends AppCompatActivity {
             int duration = Toast.LENGTH_LONG;
 
             if (eleccioJugador.equals(eleccioCriatura)) {
-                // Si les eleccions son iguals es empat
             } else if (reglesDeJoc.get(eleccioJugador).equals(eleccioCriatura)) {
-                // Si l'elecció del jugador apunta a la de la criatura en el HashMap, llavors
-                // el jugador guanya
-                //CharSequence text = "Has capturat un " + nomEspecie;
                 if(eleccioJugador == "pedra"){
                     botoPedra.setForeground(ContextCompat.getDrawable(context,R.drawable.pedrax));
                 } else if(eleccioJugador == "paper"){
@@ -323,18 +363,12 @@ public class MainActivity extends AppCompatActivity {
                 Toast toast = Toast.makeText(context,text,duration);
                 toast.show();
             } else {
-                // el jugador perd si no es cumpleix cap cas anterior
-
-
-                //CharSequence text = "S’ha escapat un " + nomEspecie;
-
                 CharSequence text = "Has capturat un Digimon";
                 textResultat.setText(text);
                 Toast toast = Toast.makeText(context,text,duration);
                 toast.show();
             }
 
-            // Inhabilita els botons temporalment per forçar una espera abans de seguir jugant
             botoPedra.setEnabled(false);
             botoPaper.setEnabled(false);
             botoTisores.setEnabled(false);
@@ -344,7 +378,6 @@ public class MainActivity extends AppCompatActivity {
 
                 }
                 @Override public void onFinish() {
-                    // Reactiva els botons per a la següent jugada
                     botoPedra.setEnabled(true);
                     botoPaper.setEnabled(true);
                     botoTisores.setEnabled(true);
@@ -360,7 +393,6 @@ public class MainActivity extends AppCompatActivity {
         botoPedra.setOnClickListener(listener);
         botoPaper.setOnClickListener(listener);
         botoTisores.setOnClickListener(listener);
-
 
         dialog.show();
     }
@@ -392,38 +424,39 @@ public class MainActivity extends AppCompatActivity {
             SV.getHolder().unlockCanvasAndPost(canvas);
         }
     }
+
     private void dibuixaMapa() {
-       if (SV.getHolder().getSurface().isValid()) {
-           int amplaPantalla = SV.getWidth();
-           int altPantalla = SV.getHeight();
+        if (SV.getHolder().getSurface().isValid()) {
+            int amplaPantalla = SV.getWidth();
+            int altPantalla = SV.getHeight();
 
-           float w_ = amplaPantalla / fe;
-           float h_ = altPantalla / fe;
+            float w_ = amplaPantalla / fe;
+            float h_ = altPantalla / fe;
 
-           float x1 = Cx - w_ / 2f;
-           float y1 = Cy - h_ / 2f;
-           float x2 = Cx + w_ / 2f;
-           float y2 = Cy + h_ / 2f;
+            float x1 = Cx - w_ / 2f;
+            float y1 = Cy - h_ / 2f;
+            float x2 = Cx + w_ / 2f;
+            float y2 = Cy + h_ / 2f;
 
-           // Assegurem límits perquè no surti fora de la imatge
-           x1 = Math.min(Math.max(0, x1), bmp.getWidth() - w_);
-           y1 = Math.min(Math.max(0, y1), bmp.getHeight() - h_);
-           x2 = Math.max(Math.min(bmp.getWidth(), x2),w_);
-           y2 = Math.max(Math.min(bmp.getHeight(), y2),h_);
+            // Assegurem límits perquè no surti fora de la imatge
+            x1 = Math.min(Math.max(0, x1), bmp.getWidth() - w_);
+            y1 = Math.min(Math.max(0, y1), bmp.getHeight() - h_);
+            x2 = Math.max(Math.min(bmp.getWidth(), x2),w_);
+            y2 = Math.max(Math.min(bmp.getHeight(), y2),h_);
 
-           Rect src = new Rect((int)x1, (int)y1, (int)x2, (int)y2);
-           Rect dst = new Rect(0, 0, amplaPantalla, altPantalla);
+            Rect src = new Rect((int)x1, (int)y1, (int)x2, (int)y2);
+            Rect dst = new Rect(0, 0, amplaPantalla, altPantalla);
 
-           Canvas canvas = SV.getHolder().lockCanvas();
-           canvas.drawColor(Color.BLACK);
-           canvas.drawBitmap(bmp, src, dst, new Paint());
-           SV.getHolder().unlockCanvasAndPost(canvas);
+            Canvas canvas = SV.getHolder().lockCanvas();
+            canvas.drawColor(Color.BLACK);
+            canvas.drawBitmap(bmp, src, dst, new Paint());
+            SV.getHolder().unlockCanvasAndPost(canvas);
 
-           textViewZoom.setText(String.format("x %.2f", fe/zoomMaxim));
-       }
+            textViewZoom.setText(String.format("x %.2f", fe/zoomMaxim));
+        }
     }
 
-       private void ferZoomIn() {
+    private void ferZoomIn() {
         Log.d("ZOOM", "Zoom In");
         if (fe + incrementZoom <= zoomMaxim) {
             fe += incrementZoom;
@@ -433,34 +466,29 @@ public class MainActivity extends AppCompatActivity {
         dibuixaMapa();
     }
 
-       private void ferZoomOut() {
-           Log.d("ZOOM", "Zoom OUT");
+    private void ferZoomOut() {
+        Log.d("ZOOM", "Zoom OUT");
 
-           if (fe - incrementZoom >= zoomMinim) {
-               fe -= incrementZoom;
-           } else {
-               fe = zoomMinim;
-           }
-           dibuixaMapa();
-       }
+        if (fe - incrementZoom >= zoomMinim) {
+            fe -= incrementZoom;
+        } else {
+            fe = zoomMinim;
+        }
+        dibuixaMapa();
+    }
 
-       private void moure(int dx, int dy) {
-           Cx += dx / fe;  // Ajustat pel nivell de zoom
-           Cy += dy / fe;
-           // Assegurar que no surtim del mapa
-           Cx = Math.max(0, Math.min(bmp.getWidth(), Cx));
-           Cy = Math.max(0, Math.min(bmp.getHeight(), Cy));
-           dibuixaMapa();
-       }
-
-    /////////P2 USO DE LOS DEDOS
+    private void moure(int dx, int dy) {
+        Cx += dx / fe;
+        Cy += dy / fe;
+        Cx = Math.max(0, Math.min(bmp.getWidth(), Cx));
+        Cy = Math.max(0, Math.min(bmp.getHeight(), Cy));
+        dibuixaMapa();
+    }
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
-        // Primero procesamos el gesto de zoom
         scaleDetector.onTouchEvent(event);
 
-        // Si zoom nada
         if (Escalando) {
             return true;
         }
@@ -478,11 +506,13 @@ public class MainActivity extends AppCompatActivity {
 
             case MotionEvent.ACTION_UP:
                 handleTouchUp(event);
+                actualitzaInformacioZonaActual();
                 break;
         }
 
         return true;
     }
+
     private void handleTouchDown(MotionEvent event) {
         if (!Escalando) {
             cursorX = event.getX();
@@ -502,7 +532,6 @@ public class MainActivity extends AppCompatActivity {
             Cx -= dx;
             Cy -= dy;
 
-            // Limitar al tamaño del mapa
             Cx = Math.max(0, Math.min(bmp.getWidth(), Cx));
             Cy = Math.max(0, Math.min(bmp.getHeight(), Cy));
 
@@ -516,6 +545,7 @@ public class MainActivity extends AppCompatActivity {
     private void handleTouchUp(MotionEvent event) {
         Moviendo = false;
     }
+
     private class ScaleListener extends ScaleGestureDetector.SimpleOnScaleGestureListener {
         @Override
         public boolean onScaleBegin(ScaleGestureDetector detector) {
@@ -526,20 +556,17 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public boolean onScale(ScaleGestureDetector detector) {
             float scaleFactor = detector.getScaleFactor();
-
             float newFe = fe * scaleFactor;
-
             newFe = Math.max(zoomMinim, Math.min(newFe, zoomMaxim));
 
-            // Si el zoom ha cambiado lo cambiamos
             if (newFe != fe) {
                 fe = newFe;
-
                 float focusX = detector.getFocusX();
                 float focusY = detector.getFocusY();
                 adjustCenterForZoom(focusX, focusY, scaleFactor);
 
                 dibuixaMapa();
+                actualitzaInformacioZonaActual();
             }
             return true;
         }
@@ -549,19 +576,96 @@ public class MainActivity extends AppCompatActivity {
             Escalando = false;
         }
     }
+
     private void adjustCenterForZoom(float focusX, float focusY, float scaleFactor) {
-        // Convertir coordenadas de pantalla a coordenadas del mapa
         float mapFocusX = Cx + (focusX - SV.getWidth()/2f) / fe;
         float mapFocusY = Cy + (focusY - SV.getHeight()/2f) / fe;
 
-        // Ajustar el centro
         Cx = mapFocusX - (mapFocusX - Cx) / scaleFactor;
         Cy = mapFocusY - (mapFocusY - Cy) / scaleFactor;
 
-        //no salir limites
         Cx = Math.max(0, Math.min(bmp.getWidth(), Cx));
         Cy = Math.max(0, Math.min(bmp.getHeight(), Cy));
     }
 
-}
+    public String llegirJSON ( Context context , int id ) {
+        String json = null;
+        try {
+            InputStream is = context.getResources().openRawResource(id);
+            int size = is.available();
+            byte [] buffer = new byte [size];
+            is.read(buffer);
+            is.close();
+            json = new String(buffer, StandardCharsets.UTF_8);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return json;
+    }
 
+    public void crearEstructuresDeDadesDeZones (String contingutJSON){
+        try {
+            JSONObject arrel = new JSONObject(contingutJSON);
+            JSONArray arrayZones = arrel.getJSONArray("zones_coords");
+
+            for (int i = 0; i < arrayZones.length(); i++) {
+                JSONObject zonaObj = arrayZones.getJSONObject(i);
+
+                String nomPopular = zonaObj.getString("zona");
+                String nomOficial = zonaObj.getString("nom");
+                int x1 = zonaObj.getInt("x1");
+                int y1 = zonaObj.getInt("y1");
+                int x2 = zonaObj.getInt("x2");
+                int y2 = zonaObj.getInt("y2");
+
+                Zona z = new Zona(nomOficial, x1, y1, x2, y2);
+
+                catalegZonesTrie.insert(nomPopular, z);
+
+                catalegZonesMapa.put(nomPopular, z);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void actualitzaInformacioZonaActual() {
+        if (conjuntoVisible.equals("mapa")) {
+            int mapCenterX = (int) Cx;
+            int mapCenterY = (int) Cy;
+
+            Zona zonaActual = findZoneAtCurrentMapCenter(mapCenterX, mapCenterY);
+            if (zonaActual != null) {
+                textViewNomZona.setText("Zona: " + zonaActual.getNomOficial());
+            } else {
+                textViewNomZona.setText("Zona: Desconeguda");
+            }
+        }
+    }
+
+    private Zona findZoneAtCurrentMapCenter(int mapX, int mapY) {
+        for (Zona zona : catalegZonesMapa.values()) {
+            // Replaced zona.getBounds().contains(mapX, mapY) with the new contains method
+            if (zona.contains(mapX, mapY)) {
+                return zona;
+            }
+        }
+        return null;
+    }
+
+    private void iniciarTemporitzadorActualitzacioZona() {
+        if (zoneUpdateTimer != null) {
+            zoneUpdateTimer.cancel();
+        }
+        zoneUpdateTimer = new CountDownTimer(Long.MAX_VALUE, 500) {
+            @Override
+            public void onTick(long millisUntilFinished) {
+                actualitzaInformacioZonaActual();
+            }
+
+            @Override
+            public void onFinish() {
+            }
+        }.start();
+    }
+}

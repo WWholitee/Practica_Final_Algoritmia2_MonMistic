@@ -181,26 +181,31 @@
         android:orientation="vertical"
         app:layout_constraintGuide_percent="0.9680851" />
 
-    <TextView
-        android:id="@+id/Puntos"
-        android:layout_width="63dp"
-        android:layout_height="23dp"
-        android:text="TextView"
-        android:visibility="invisible"
-        app:layout_constraintBottom_toTopOf="@+id/guideline5"
-        app:layout_constraintEnd_toStartOf="@+id/guideline3" />
-
     <EditText
         android:id="@+id/CercaZona"
         android:layout_width="0dp"
         android:layout_height="40dp"
+        android:layout_marginBottom="10dp"
+        android:background="#80FFFFFF"
         android:ems="10"
+        android:hint=" Cercar Zona"
         android:inputType="text"
-        android:text="Name"
         android:visibility="invisible"
+        app:layout_constraintBottom_toTopOf="@+id/botonMapa"
         app:layout_constraintEnd_toStartOf="@+id/guideline14"
-        app:layout_constraintStart_toStartOf="@+id/guideline3"
-        app:layout_constraintTop_toTopOf="@+id/guideline15" />
+        app:layout_constraintStart_toStartOf="@+id/guideline3" />
+
+    <ListView
+        android:id="@+id/suggestionsListView"
+        android:layout_width="27dp"
+        android:layout_height="32dp"
+        android:background="@android:color/darker_gray"
+        android:elevation="2dp"
+        android:maxHeight="200dp"
+        android:visibility="gone"
+        app:layout_constraintEnd_toEndOf="@id/CercaZona"
+        app:layout_constraintStart_toStartOf="@id/CercaZona"
+        app:layout_constraintTop_toBottomOf="@id/CercaZona" />
 
     <androidx.constraintlayout.widget.Guideline
         android:id="@+id/guideline15"
@@ -209,19 +214,20 @@
         android:orientation="horizontal"
         app:layout_constraintGuide_begin="40dp" />
 
-    <!--
+
     <TextView
         android:id="@+id/textCriaturas"
         android:layout_width="450dp"
         android:layout_height="350dp"
         android:background="@drawable/forma"
         android:text="TextView"
+        android:textColor="#FFFFFF"
         android:visibility="invisible"
         app:layout_constraintBottom_toBottomOf="@+id/surfaceView2"
         app:layout_constraintEnd_toEndOf="@+id/surfaceView2"
         app:layout_constraintTop_toTopOf="@+id/surfaceView2"
         app:layout_constraintVertical_bias="0.0" />
-    -->
+
 
     <SurfaceView
         android:id="@+id/surfaceView"
@@ -244,6 +250,19 @@
         app:layout_constraintEnd_toStartOf="@+id/guideline3"
         app:layout_constraintStart_toStartOf="@+id/guideline10"
         app:layout_constraintTop_toTopOf="@+id/guideline15" />
+
+
+    <TextView
+        android:id="@+id/Puntos"
+        android:layout_width="63dp"
+        android:layout_height="23dp"
+        android:layout_marginEnd="10dp"
+        android:text="PUNTOS"
+        android:textColor="#FFFFFF"
+        android:textSize="14sp"
+        android:visibility="invisible"
+        app:layout_constraintBottom_toTopOf="@+id/guideline5"
+        app:layout_constraintEnd_toEndOf="@+id/surfaceView" />
 
     <RadioButton
         android:id="@+id/radioButton"
@@ -287,14 +306,14 @@
 
     <TextView
         android:id="@+id/NomZONA"
-        android:layout_width="92dp"
+        android:layout_width="360dp"
         android:layout_height="28dp"
         android:layout_marginStart="4dp"
         android:layout_marginTop="4dp"
         android:rotation="0"
         android:text="NomZona"
         android:textColor="#FFFFFF"
-        android:textSize="20sp"
+        android:textSize="18sp"
         android:visibility="invisible"
         app:layout_constraintStart_toStartOf="@+id/surfaceView"
         app:layout_constraintTop_toTopOf="@+id/surfaceView" />
