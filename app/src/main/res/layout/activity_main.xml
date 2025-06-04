@@ -307,7 +307,7 @@
     <TextView
         android:id="@+id/NomZONA"
         android:layout_width="360dp"
-        android:layout_height="28dp"
+        android:layout_height="50dp"
         android:layout_marginStart="4dp"
         android:layout_marginTop="4dp"
         android:rotation="0"

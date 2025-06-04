@@ -44,6 +44,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Random;
 import java.util.TreeMap;
 import java.util.ArrayList;
 import java.util.List;
@@ -68,6 +69,13 @@ public class MainActivity extends AppCompatActivity {
 
     private ZonaTrie catalegZonesTrie;
     TreeMap<String, Zona> catalegZonesMapa = new TreeMap<>();
+
+    // Nivell 1:    Clau: Zona      Valor: HashMap <String, List<Criatura>>
+    // Nivell 2:    Clau: Gènere    Valor: Llista enllaçada de criatures
+    private TreeMap<String, Map<String, UnsortedLinkedListSet<Criatura>>> catalegCriatures;
+    private HashMap<Criatura, Zona> criaturesCapturades;
+    private HashMap<Criatura, Zona> criaturesEscapades;
+
 
     private Context context;
     private Bitmap bmp;
@@ -122,6 +130,7 @@ public class MainActivity extends AppCompatActivity {
 
         contingutJSON = llegirJSON(context, R.raw.zones);
         crearEstructuresDeDadesDeZones(contingutJSON);
+        generarCriatures();
 
         SV.getHolder().addCallback(new SurfaceHolder.Callback() {
             @Override
@@ -306,6 +315,74 @@ public class MainActivity extends AppCompatActivity {
         reglesDeJoc.put("tisores", "paper");
         reglesDeJoc.put("paper", "pedra");
     }
+
+    /**
+     * Genera 500 criatures i les distribueix aleatòriament per les zones.
+     * S'assignen 125 criatures de cada gènere.
+     */
+    private void generarCriatures(){
+        // Inicialització dels catàlegs de criatures
+        catalegCriatures = new TreeMap<>(); // Catàleg principal de criatures per zona i gènere
+        criaturesCapturades = new HashMap<>(); // Llista de criatures capturades (inicialment buida)
+        criaturesEscapades = new HashMap<>(); // Llista de criatures escapades (inicialment buida)
+
+        String[] generes = {"vapordrac", "focguard", "tornadrac", "aiguard"};
+        int id = 0;
+        int especie;
+        float x,y;
+        Random ran = new Random();
+
+
+
+        for (String genere : generes) {
+
+            for (int i = 0; i < 125; i++) {
+                id++;
+                especie = ran.nextInt(8)+1;
+                x = ran.nextFloat()*bmp.getWidth();
+                y = ran.nextFloat()*bmp.getHeight();
+                Criatura criatura = new Criatura(id+1, genere, especie, x, y);
+                Zona zonaCriatura = findZone((int) x, (int) y);
+
+
+
+                // 1. Obtenir el mapa de gèneres per a la zona actual.
+                Map<String, UnsortedLinkedListSet<Criatura>> criaturesPerGenereEnZona;
+                Log.d("Llegim de zona: ", " x: " + x + " y: " + y);
+
+                // Controlam que si una criatura apareix en una posició sense zona asignada
+                // La seva zona rebi el nom "altre"
+                String nomZona;
+                if(zonaCriatura != null){
+                    nomZona = zonaCriatura.getNomOficial();
+                } else {
+                    nomZona = "altre";
+                }
+
+                if (catalegCriatures.containsKey(nomZona)) {
+                    criaturesPerGenereEnZona = catalegCriatures.get(nomZona);
+                } else {
+                    criaturesPerGenereEnZona = new HashMap<>();
+                    catalegCriatures.put(nomZona, criaturesPerGenereEnZona);
+                }
+
+                // 2. Obtenir la llista de criatures per al gènere actual dins d'aquest mapa de gèneres.
+                UnsortedLinkedListSet<Criatura> llistaCriaturesDelGenere;
+
+                if (criaturesPerGenereEnZona.containsKey(genere)) {
+                    llistaCriaturesDelGenere = criaturesPerGenereEnZona.get(genere);
+                } else {
+                    llistaCriaturesDelGenere = new UnsortedLinkedListSet<>();
+                    criaturesPerGenereEnZona.put(genere, llistaCriaturesDelGenere);
+                }
+
+                // 3. Afegeix la nova criatura a la llista obtinguda/creada.
+                llistaCriaturesDelGenere.add(criatura);
+            }
+        }
+    }
+
+
 
     private void combat(){
         Dialog dialog = new Dialog(findViewById(R.id.surfaceView).getContext());
@@ -672,7 +749,7 @@ public class MainActivity extends AppCompatActivity {
             int mapCenterX = (int) Cx;
             int mapCenterY = (int) Cy;
 
-            Zona zonaActual = findZoneAtCurrentMapCenter(mapCenterX, mapCenterY);
+            Zona zonaActual = findZone(mapCenterX, mapCenterY);
             if (zonaActual != null) {
                 textViewNomZona.setText(" " + zonaActual.getNomOficial());
             } else {
@@ -680,9 +757,8 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    private Zona findZoneAtCurrentMapCenter(int mapX, int mapY) {
+    private Zona findZone(int mapX, int mapY) {
         for (Zona zona : catalegZonesMapa.values()) {
-            // Replaced zona.getBounds().contains(mapX, mapY) with the new contains method
             if (zona.contains(mapX, mapY)) {
                 return zona;
             }

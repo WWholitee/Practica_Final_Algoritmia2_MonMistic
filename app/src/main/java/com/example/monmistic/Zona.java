@@ -31,11 +31,11 @@ public class Zona {
     }
 
     public String getNomOficial() {
+        Log.d("getNomOficial", "Zona x1: " + x1 + " x2: " + x2 + " y1: " + y1 + " y2: " +y2);
         return nomOficial;
     }
 
     public boolean contains(int x, int y) {
-        Log.d("ZONA: ", "x1: " + x1 + " x2: " + x2 + "y1: " + y1 + "y2: " + y2);
         return x >= x1 && x < x2 && y >= y1 && y < y2;
     }
 }
