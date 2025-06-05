@@ -55,6 +55,7 @@ public class MainActivity extends AppCompatActivity {
     public Button BMapa, BCriatura, BInventario, Bmenos1, Bmenos2, Bmas1, Bmas2;
     private TextView textViewNomZona;
     private TextView textViewPuntos;
+    private TextView textCriatures;
     private int puntos;
     private EditText editTextCercaZona;
     private TextView textViewZoom;
@@ -72,7 +73,7 @@ public class MainActivity extends AppCompatActivity {
 
     // Nivell 1:    Clau: Zona      Valor: HashMap <String, List<Criatura>>
     // Nivell 2:    Clau: Gènere    Valor: Llista enllaçada de criatures
-    private TreeMap<String, Map<String, UnsortedLinkedListSet<Criatura>>> catalegCriatures;
+    private TreeMap<String, Map<Genere, UnsortedLinkedListSet<Criatura>>> catalegCriatures;
     private HashMap<Criatura, Zona> criaturesCapturades;
     private HashMap<Criatura, Zona> criaturesEscapades;
 
@@ -174,7 +175,6 @@ public class MainActivity extends AppCompatActivity {
         });
 
         BInventario.setOnClickListener(v -> {
-            combat();
             visibilizar("inventari");
             if (zoneUpdateTimer != null) {
                 zoneUpdateTimer.cancel();
@@ -264,6 +264,7 @@ public class MainActivity extends AppCompatActivity {
 
     public void inicializarConjuntoCriaturas(){
         SurfaceView sv2 = findViewById(R.id.surfaceView2);
+        textCriatures = findViewById(R.id.textCriaturas);
         RadioButton rb1 = findViewById(R.id.radioButton);
         RadioButton rb2 = findViewById(R.id.radioButton2);
         RadioButton rb3 = findViewById(R.id.radioButton3);
@@ -271,6 +272,7 @@ public class MainActivity extends AppCompatActivity {
 
         craituresViews = new UnsortedLinkedListSet<View>();
         craituresViews.add(sv2);
+        craituresViews.add(textCriatures);
         craituresViews.add(rb1);
         craituresViews.add(rb2);
         craituresViews.add(rb3);
@@ -326,7 +328,13 @@ public class MainActivity extends AppCompatActivity {
         criaturesCapturades = new HashMap<>(); // Llista de criatures capturades (inicialment buida)
         criaturesEscapades = new HashMap<>(); // Llista de criatures escapades (inicialment buida)
 
-        String[] generes = {"vapordrac", "focguard", "tornadrac", "aiguard"};
+        Genere aiguard = new Genere("aiguard", 0.01f, Color.BLACK, 10, 0);
+        Genere focguard = new Genere("focguard", 0.015f, Color.GREEN, 15, 1);
+        Genere tornadrac = new Genere("tornadrac", 0.02f, Color.RED, 20, 2.5f);
+        Genere vapordrac = new Genere("vapordrac", 0.025f, Color.BLUE, 30, 3.5f);
+
+
+        Genere[] generes = {aiguard, focguard, tornadrac, vapordrac};
         int id = 0;
         int especie;
         float x,y;
@@ -334,7 +342,7 @@ public class MainActivity extends AppCompatActivity {
 
 
 
-        for (String genere : generes) {
+        for (Genere genere : generes) {
 
             for (int i = 0; i < 125; i++) {
                 id++;
@@ -347,7 +355,7 @@ public class MainActivity extends AppCompatActivity {
 
 
                 // 1. Obtenir el mapa de gèneres per a la zona actual.
-                Map<String, UnsortedLinkedListSet<Criatura>> criaturesPerGenereEnZona;
+                Map<Genere, UnsortedLinkedListSet<Criatura>> criaturesPerGenereEnZona;
                 Log.d("Llegim de zona: ", " x: " + x + " y: " + y);
 
                 // Controlam que si una criatura apareix en una posició sense zona asignada
@@ -531,6 +539,41 @@ public class MainActivity extends AppCompatActivity {
 
             boolean hiHaCriatures = false;
 
+            // Dibuixar les criatures
+            Paint criaturaPaint = new Paint();
+            float criaturaSize = 20; // Mida del quadrat de la criatura en píxels de pantalla
+
+            if (catalegCriatures != null) {
+                for (Map.Entry<String, Map<Genere, UnsortedLinkedListSet<Criatura>>> entryZona : catalegCriatures.entrySet()) {
+                    for (Map.Entry<Genere, UnsortedLinkedListSet<Criatura>> entryGenere : entryZona.getValue().entrySet()) {
+                        for (Criatura criatura : entryGenere.getValue()) {
+                            // Calcular les coordenades de la criatura a la pantalla
+                            // posX i posY són les coordenades absolutes de la criatura al bitmap
+                            float posX = criatura.getX();
+                            float posY = criatura.getY();
+
+                            // Transformar coordenades del mapa a coordenades de pantalla
+                            // (coordenada_mapa - offset_mapa_visible_x) * factor_escala
+                            float screenX = (posX - x1) * fe;
+                            float screenY = (posY - y1) * fe;
+
+                            // Dibuixar la criatura només si és visible a la pantalla
+                            if (screenX >= -criaturaSize && screenX <= amplaPantalla + criaturaSize &&
+                                    screenY >= -criaturaSize && screenY <= altPantalla + criaturaSize) {
+
+                                // Obtenir el color de la criatura segons el seu gènere
+                                int color = criatura.getGenere().getColorDetector();
+                                criaturaPaint.setColor(color);
+                                criaturaPaint.setStyle(Paint.Style.FILL);
+
+                                // Dibuixa el quadrat de la criatura
+                                canvas.drawRect(screenX - criaturaSize / 2, screenY - criaturaSize / 2,
+                                        screenX + criaturaSize / 2, screenY + criaturaSize / 2, criaturaPaint);
+                            }
+                        }
+                    }
+                }
+            }
             if (hiHaCriatures){
                 Paint circlePaint = new Paint();
                 circlePaint.setColor(Color.WHITE); // Color del cercle

@@ -215,20 +215,6 @@
         app:layout_constraintGuide_begin="40dp" />
 
 
-    <TextView
-        android:id="@+id/textCriaturas"
-        android:layout_width="450dp"
-        android:layout_height="350dp"
-        android:background="@drawable/forma"
-        android:text="TextView"
-        android:textColor="#FFFFFF"
-        android:visibility="invisible"
-        app:layout_constraintBottom_toBottomOf="@+id/surfaceView2"
-        app:layout_constraintEnd_toEndOf="@+id/surfaceView2"
-        app:layout_constraintTop_toTopOf="@+id/surfaceView2"
-        app:layout_constraintVertical_bias="0.0" />
-
-
     <SurfaceView
         android:id="@+id/surfaceView"
         android:layout_width="450dp"
@@ -244,6 +230,7 @@
         android:id="@+id/surfaceView2"
         android:layout_width="450dp"
         android:layout_height="350dp"
+        android:background="#00FFFFFF"
         android:visibility="invisible"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintDimensionRatio="3:2"
@@ -251,6 +238,18 @@
         app:layout_constraintStart_toStartOf="@+id/guideline10"
         app:layout_constraintTop_toTopOf="@+id/guideline15" />
 
+    <TextView
+        android:id="@+id/textCriaturas"
+        android:layout_width="450dp"
+        android:layout_height="340dp"
+        android:background="@drawable/forma"
+        android:text="TextView"
+        android:textColor="#FFFFFF"
+        android:visibility="invisible"
+        app:layout_constraintBottom_toBottomOf="@+id/surfaceView2"
+        app:layout_constraintEnd_toEndOf="@+id/surfaceView2"
+        app:layout_constraintTop_toTopOf="@+id/surfaceView2"
+        app:layout_constraintVertical_bias="0.0" />
 
     <TextView
         android:id="@+id/Puntos"
@@ -268,10 +267,11 @@
         android:id="@+id/radioButton"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginEnd="80dp"
         android:text="RadioButton"
         android:visibility="invisible"
         app:layout_constraintBottom_toTopOf="@+id/radioButton2"
-        app:layout_constraintEnd_toEndOf="@+id/surfaceView2"
+        app:layout_constraintEnd_toStartOf="@+id/guideline3"
         app:layout_constraintStart_toStartOf="@+id/guideline16" />
 
     <RadioButton
@@ -281,8 +281,7 @@
         android:text="RadioButton"
         android:visibility="invisible"
         app:layout_constraintBottom_toTopOf="@+id/radioButton"
-        app:layout_constraintEnd_toEndOf="@+id/surfaceView2"
-        app:layout_constraintStart_toStartOf="@+id/guideline16" />
+        app:layout_constraintEnd_toEndOf="@+id/radioButton" />
 
     <RadioButton
         android:id="@+id/radioButton2"
@@ -291,18 +290,17 @@
         android:text="RadioButton"
         android:visibility="invisible"
         app:layout_constraintBottom_toTopOf="@+id/radioButton3"
-        app:layout_constraintEnd_toEndOf="@+id/surfaceView2"
-        app:layout_constraintStart_toStartOf="@+id/guideline16" />
+        app:layout_constraintEnd_toEndOf="@+id/radioButton" />
 
     <RadioButton
         android:id="@+id/radioButton3"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginBottom="10dp"
         android:text="RadioButton"
         android:visibility="invisible"
         app:layout_constraintBottom_toBottomOf="@+id/surfaceView"
-        app:layout_constraintEnd_toEndOf="@+id/surfaceView"
-        app:layout_constraintStart_toStartOf="@+id/guideline16" />
+        app:layout_constraintEnd_toEndOf="@+id/radioButton" />
 
     <TextView
         android:id="@+id/NomZONA"
