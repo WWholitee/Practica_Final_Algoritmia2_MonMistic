@@ -43,11 +43,10 @@ import org.json.JSONObject;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Random;
 import java.util.TreeMap;
-import java.util.ArrayList;
-import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -78,6 +77,7 @@ public class MainActivity extends AppCompatActivity {
     private HashMap<Criatura, Zona> criaturesEscapades;
 
 
+
     private Context context;
     private Bitmap bmp;
     private float Cx, Cy;
@@ -94,6 +94,11 @@ public class MainActivity extends AppCompatActivity {
     private boolean Escalando = false;
 
     private CountDownTimer zoneUpdateTimer;
+    private Dialog currentCombatDialog = null;
+
+
+    private final int DISTANCIA_ESCAPE = 200;
+    private final int DISTANCIA_COMBAT = 30;
 
     //////////////////////////////////////////////////////////////////////////////////////////
 
@@ -328,7 +333,7 @@ public class MainActivity extends AppCompatActivity {
         criaturesCapturades = new HashMap<>(); // Llista de criatures capturades (inicialment buida)
         criaturesEscapades = new HashMap<>(); // Llista de criatures escapades (inicialment buida)
 
-        Genere aiguard = new Genere("aiguard", 0.01f, Color.BLACK, 10, 0);
+        Genere aiguard = new Genere("aiguard", 0.01f, Color.MAGENTA, 10, 0);
         Genere focguard = new Genere("focguard", 0.015f, Color.GREEN, 15, 1);
         Genere tornadrac = new Genere("tornadrac", 0.02f, Color.RED, 20, 2.5f);
         Genere vapordrac = new Genere("vapordrac", 0.025f, Color.BLUE, 30, 3.5f);
@@ -392,8 +397,13 @@ public class MainActivity extends AppCompatActivity {
 
 
 
-    private void combat(){
+    private void combat(Criatura criatura){
+        if (currentCombatDialog != null && currentCombatDialog.isShowing()) {
+            return;
+        }
+
         Dialog dialog = new Dialog(findViewById(R.id.surfaceView).getContext());
+        currentCombatDialog = dialog;
         dialog.setContentView(R.layout.dialog);
         dialog.getWindow().setLayout(SV.getWidth(), SV.getHeight());
         dialog.setCancelable(false);
@@ -435,8 +445,13 @@ public class MainActivity extends AppCompatActivity {
             Context context = getApplicationContext () ;
             int duration = Toast.LENGTH_LONG;
 
+            // 0: Empat, 1: Victòria, 2: Derrota
+            final int resultatCombat;
+
             if (eleccioJugador.equals(eleccioCriatura)) {
+                resultatCombat = 0;
             } else if (reglesDeJoc.get(eleccioJugador).equals(eleccioCriatura)) {
+                resultatCombat = 1;
                 if(eleccioJugador == "pedra"){
                     botoPedra.setForeground(ContextCompat.getDrawable(context,R.drawable.pedrax));
                 } else if(eleccioJugador == "paper"){
@@ -444,16 +459,22 @@ public class MainActivity extends AppCompatActivity {
                 } else if(eleccioJugador == "tisores"){
                     botoTisores.setForeground(ContextCompat.getDrawable(context,R.drawable.tisoresx));
                 }
-                CharSequence text = "Has capturat un Pokemon";
+                CharSequence text = "Has capturat un " + criatura.getGenere().getName();
+                eliminarDelCataleg(criatura);
+                criaturesCapturades.put(criatura,findZone((int)criatura.getX(),(int)criatura.getY()));
                 textResultat.setText(text);
                 Toast toast = Toast.makeText(context,text,duration);
                 toast.show();
             } else {
-                CharSequence text = "Has capturat un Digimon";
+                resultatCombat = 2;
+                CharSequence text = "S'ha escapat un " + criatura.getGenere().getName();
                 textResultat.setText(text);
+                eliminarDelCataleg(criatura);
+                criaturesEscapades.put(criatura,findZone((int)criatura.getX(),(int)criatura.getY()));
                 Toast toast = Toast.makeText(context,text,duration);
                 toast.show();
             }
+
 
             botoPedra.setEnabled(false);
             botoPaper.setEnabled(false);
@@ -471,9 +492,17 @@ public class MainActivity extends AppCompatActivity {
                     ferAnimacioEspera(botoPedra);
                     ferAnimacioEspera(botoPaper);
                     ferAnimacioEspera(botoTisores);
+
+                    if(resultatCombat != 0){ // Si no es empat
+                        // Tancar el diàleg i netejar la referència
+                        if (currentCombatDialog != null) {
+                            currentCombatDialog.dismiss();
+                            currentCombatDialog = null;
+                            dibuixaMapa(); // Redibuixar el mapa per actualitzar la visualització
+                        }
+                    }
                 }
             }.start();
-
         };
 
         botoPedra.setOnClickListener(listener);
@@ -680,6 +709,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void handleMove(MotionEvent event) {
+        if (currentCombatDialog != null && currentCombatDialog.isShowing()) {
+            return;
+        }
         if (Moviendo && !Escalando) {
             float x = event.getX();
             float y = event.getY();
@@ -693,11 +725,92 @@ public class MainActivity extends AppCompatActivity {
             Cx = Math.max(0, Math.min(bmp.getWidth(), Cx));
             Cy = Math.max(0, Math.min(bmp.getHeight(), Cy));
 
+            criaturesEscapen(Cx, Cy);
+            Criatura criatura = cercarCriaturesProperes(Cx, Cy);
+            if(criatura != null){
+                combat(criatura);
+            }
+
             cursorX = x;
             cursorY = y;
 
             dibuixaMapa();
         }
+    }
+
+    private void eliminarDelCataleg(Criatura criatura) {
+        if (catalegCriatures == null || criatura == null) {
+            return;
+        }
+
+        Zona zonaOfCreature = findZone((int)criatura.getX(), (int)criatura.getY());
+        String nomZona = (zonaOfCreature != null) ? zonaOfCreature.getNomOficial() : "altre";
+
+        Genere nomGenere = criatura.getGenere();
+
+        Map<Genere, UnsortedLinkedListSet<Criatura>> criaturesPerGenereEnZona = catalegCriatures.get(nomZona);
+        if (criaturesPerGenereEnZona != null) {
+            UnsortedLinkedListSet<Criatura> llistaCriaturesDelGenere = criaturesPerGenereEnZona.get(nomGenere);
+            if (llistaCriaturesDelGenere != null) {
+                boolean removed = llistaCriaturesDelGenere.remove(criatura);
+                if (removed) {
+                    Log.d("removeCreature", "Criatura " + criatura.getNom() + " eliminada del catàleg de mapa.");
+                    if (llistaCriaturesDelGenere.isEmpty()) {
+                        criaturesPerGenereEnZona.remove(nomGenere);
+                        if (criaturesPerGenereEnZona.isEmpty()) {
+                            catalegCriatures.remove(nomZona);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private void criaturesEscapen(float mapX, float mapY){
+        boolean canviDeZona = false;
+        // Iterar sobre totes les zones i tots els gèneres per trobar qualsevol criatura
+        for (Map.Entry<String, Map<Genere, UnsortedLinkedListSet<Criatura>>> entryZona : catalegCriatures.entrySet()) {
+            Map<Genere, UnsortedLinkedListSet<Criatura>> criaturesPerGenereEnZona = entryZona.getValue();
+            if (criaturesPerGenereEnZona != null) {
+                for (Map.Entry<Genere, UnsortedLinkedListSet<Criatura>> entryGenere : criaturesPerGenereEnZona.entrySet()) {
+                    Iterator<Criatura> it = entryGenere.getValue().iterator();
+                    while (it.hasNext()) {
+                        Criatura criatura = it.next();
+                        float dx = criatura.getX() - mapX;
+                        float dy = criatura.getY() - mapY;
+                        float distance = (float) Math.sqrt(dx * dx + dy * dy);
+
+                        if (distance <= DISTANCIA_ESCAPE) {
+                            criatura.setX(criatura.getX()+dx*criatura.getGenere().getVelocitat()*10);
+                            criatura.setY(criatura.getY()+dy*criatura.getGenere().getVelocitat()*10);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private Criatura cercarCriaturesProperes(float mapX, float mapY){
+        // Iterar sobre totes les zones i tots els gèneres per trobar qualsevol criatura
+        for (Map.Entry<String, Map<Genere, UnsortedLinkedListSet<Criatura>>> entryZona : catalegCriatures.entrySet()) {
+            Map<Genere, UnsortedLinkedListSet<Criatura>> criaturesPerGenereEnZona = entryZona.getValue();
+            if (criaturesPerGenereEnZona != null) {
+                for (Map.Entry<Genere, UnsortedLinkedListSet<Criatura>> entryGenere : criaturesPerGenereEnZona.entrySet()) {
+                    Iterator<Criatura> it = entryGenere.getValue().iterator();
+                    while (it.hasNext()) {
+                        Criatura criatura = it.next();
+                        float dx = criatura.getX() - mapX;
+                        float dy = criatura.getY() - mapY;
+                        float distance = (float) Math.sqrt(dx * dx + dy * dy);
+
+                        if (distance <= DISTANCIA_COMBAT) {
+                            return criatura; // Criatura trobada
+                        }
+                    }
+                }
+            }
+        }
+        return null;
     }
 
     private void handleTouchUp(MotionEvent event) {

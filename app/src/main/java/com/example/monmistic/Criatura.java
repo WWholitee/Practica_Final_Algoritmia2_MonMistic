@@ -46,4 +46,12 @@ public class Criatura {
     public float getY(){
         return y;
     }
+
+    public void setX(float newX){
+        this.x = newX;
+    }
+
+    public void setY(float newY){
+        this.y = newY;
+    }
 }
