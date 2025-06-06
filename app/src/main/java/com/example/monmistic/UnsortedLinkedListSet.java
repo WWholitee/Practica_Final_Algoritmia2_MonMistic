@@ -75,5 +75,12 @@ public class UnsortedLinkedListSet <E> implements Iterable<E> {
         }
         return trobat;
     }
+    public int size() {
+        int count = 0;
+        for (E element : this) {
+            count++;
+        }
+        return count;
+    }
 
 }

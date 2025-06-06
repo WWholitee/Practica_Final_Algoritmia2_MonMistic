@@ -15,6 +15,9 @@ import android.graphics.Rect;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.os.CountDownTimer;
+import android.os.Handler;
+import android.text.Html;
+import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
@@ -25,6 +28,7 @@ import android.view.animation.LinearInterpolator;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.RadioButton;
+import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.EditText;
 import android.widget.Toast;
@@ -95,6 +99,7 @@ public class MainActivity extends AppCompatActivity {
 
     private CountDownTimer zoneUpdateTimer;
     private Dialog currentCombatDialog = null;
+    private RadioButton currentlySelectedRadioButton = null;
 
 
     private final int DISTANCIA_ESCAPE = 200;
@@ -270,18 +275,62 @@ public class MainActivity extends AppCompatActivity {
     public void inicializarConjuntoCriaturas(){
         SurfaceView sv2 = findViewById(R.id.surfaceView2);
         textCriatures = findViewById(R.id.textCriaturas);
-        RadioButton rb1 = findViewById(R.id.radioButton);
-        RadioButton rb2 = findViewById(R.id.radioButton2);
-        RadioButton rb3 = findViewById(R.id.radioButton3);
-        RadioButton rb4 = findViewById(R.id.radioButton4);
+        RadioGroup radioGroup = findViewById(R.id.radioGroupCriatures);
+        RadioButton rbCriaturesZona = findViewById(R.id.radioButtonCriaturesZona);
+        RadioButton rbZonesMapa = findViewById(R.id.radioButtonZonesMapa);
+        RadioButton rbCapturades = findViewById(R.id.radioButtonCapturades);
+        RadioButton rbEscapades = findViewById(R.id.radioButtonEscapades);
 
         craituresViews = new UnsortedLinkedListSet<View>();
         craituresViews.add(sv2);
         craituresViews.add(textCriatures);
-        craituresViews.add(rb1);
-        craituresViews.add(rb2);
-        craituresViews.add(rb3);
-        craituresViews.add(rb4);
+        craituresViews.add(radioGroup);
+        craituresViews.add(rbCriaturesZona);
+        craituresViews.add(rbZonesMapa);
+        craituresViews.add(rbCapturades);
+        craituresViews.add(rbEscapades);
+
+        View.OnClickListener radioButtonClickListener = v -> {
+            RadioButton clickedRadioButton = (RadioButton) v;
+
+            if (clickedRadioButton == currentlySelectedRadioButton) {
+                // Si se hace clic en el ya seleccionado, deseleccionar
+                radioGroup.clearCheck();
+                currentlySelectedRadioButton = null;
+                textCriatures.setText(""); // Limpiar el texto
+            } else {
+                // Seleccionar el nuevo RadioButton
+                currentlySelectedRadioButton = clickedRadioButton;
+                clickedRadioButton.setChecked(true);
+
+                // Mostrar el contenido correspondiente
+                if (clickedRadioButton == rbCriaturesZona) {
+                    mostrarCriaturesPerZona();
+                } else if (clickedRadioButton == rbZonesMapa) {
+                    mostrarZonesDelMapa();
+                } else if (clickedRadioButton == rbCapturades) {
+                    mostrarCriaturesCapturades();
+                } else if (clickedRadioButton == rbEscapades) {
+                    mostrarCriaturesEscapades();
+                }
+            }
+        };
+
+        // Asignar el listener a cada RadioButton
+        rbCriaturesZona.setOnClickListener(radioButtonClickListener);
+        rbZonesMapa.setOnClickListener(radioButtonClickListener);
+        rbCapturades.setOnClickListener(radioButtonClickListener);
+        rbEscapades.setOnClickListener(radioButtonClickListener);
+
+        // Listener para detectar cambios automáticos (por si acaso)
+        radioGroup.setOnCheckedChangeListener((group, checkedId) -> {
+            // Este listener se mantiene pero no es estrictamente necesario
+        });
+
+
+
+        // Habilitar scrolling en el TextView
+        textCriatures.setMovementMethod(new ScrollingMovementMethod());
     }
 
     public void inicializarConjuntoInventario(){
@@ -411,6 +460,7 @@ public class MainActivity extends AppCompatActivity {
 
         TextView textResultat = dialog.findViewById(R.id.resultat);
         ImageView imgCriatura = dialog.findViewById(R.id.imageCriatura);
+        setCreatureImage(imgCriatura, criatura);
 
         Button botoPedra = dialog.findViewById(R.id.buttonPedra);
         Button botoPaper = dialog.findViewById(R.id.buttonPaper);
@@ -510,6 +560,17 @@ public class MainActivity extends AppCompatActivity {
         botoTisores.setOnClickListener(listener);
 
         dialog.show();
+    }
+    private void setCreatureImage(ImageView imageView, Criatura criatura) {
+        String genere = criatura.getGenere().getName().toLowerCase();
+        int especie = criatura.getEspecie();
+        String imageName = genere + especie;
+
+        int resId = getResources().getIdentifier(imageName, "drawable", getPackageName());
+
+        if (resId != 0) {
+            imageView.setImageResource(resId);
+        }
     }
 
     private void ferAnimacioEspera(View boto) {
@@ -936,5 +997,139 @@ public class MainActivity extends AppCompatActivity {
             public void onFinish() {
             }
         }.start();
+    }
+
+
+    private void mostrarCriaturesPerZona() {
+        runOnUiThread(() -> {
+            try {
+                StringBuilder sb = new StringBuilder();
+                sb.append("<h2>CRIATURES PER ZONA</h2><br><br>");
+
+                if (catalegCriatures == null || catalegCriatures.isEmpty()) {
+                    sb.append("No s'han trobat dades de criatures per zona");
+                    textCriatures.setText(Html.fromHtml(sb.toString()));
+                    return;
+                }
+
+                // Ordenar zonas alfabéticamente
+                TreeMap<String, Map<Genere, UnsortedLinkedListSet<Criatura>>> zonesOrdenades =
+                        new TreeMap<>(catalegCriatures);
+
+                for (Map.Entry<String, Map<Genere, UnsortedLinkedListSet<Criatura>>> entry : zonesOrdenades.entrySet()) {
+                    String zona = entry.getKey();
+                    Map<Genere, UnsortedLinkedListSet<Criatura>> criaturesPerGenere = entry.getValue();
+
+                    sb.append("<b><font color='#0066CC'>").append(zona).append("</font></b><br>");
+
+                    if (criaturesPerGenere == null || criaturesPerGenere.isEmpty()) {
+                        sb.append("&nbsp;&nbsp;Sense criatures en aquesta zona<br>");
+                    } else {
+                        // Ordenar géneros alfabéticamente
+                        TreeMap<String, Genere> generesOrdenats = new TreeMap<>();
+                        for (Genere g : criaturesPerGenere.keySet()) {
+                            generesOrdenats.put(g.getName(), g);
+                        }
+
+                        for (Map.Entry<String, Genere> entryGenere : generesOrdenats.entrySet()) {
+                            Genere genere = entryGenere.getValue();
+                            int quantitat = 0;
+
+                            // Contar criaturas
+                            Iterator<Criatura> it = criaturesPerGenere.get(genere).iterator();
+                            while (it.hasNext()) {
+                                it.next();
+                                quantitat++;
+                            }
+
+                            sb.append("&nbsp;&nbsp;• <font color='")
+                                    .append(String.format("#%06X", (0xFFFFFF & genere.getColorDetector())))
+                                    .append("'>").append(genere.getName()).append("</font>: ")
+                                    .append(quantitat).append("<br>");
+                        }
+                    }
+                    sb.append("<br>");
+                }
+
+                textCriatures.setText(Html.fromHtml(sb.toString()));
+            } catch (Exception e) {
+                Log.e("ERROR", "Excepción en mostrarCriaturesPerZona: " + e.getMessage());
+                textCriatures.setText("Error al mostrar les dades");
+            }
+        });
+    }
+
+    private int contarCriatures(UnsortedLinkedListSet<Criatura> criatures) {
+        int count = 0;
+        if (criatures != null) {
+            for (Criatura c : criatures) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private void mostrarZonesDelMapa() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("<h2>Zones del mapa</h2><br>");
+
+        // Ordenar zonas por nombre
+        TreeMap<String, Zona> zonesOrdenades = new TreeMap<>(catalegZonesMapa);
+
+        for (Map.Entry<String, Zona> entry : zonesOrdenades.entrySet()) {
+            Zona zona = entry.getValue();
+            sb.append("<strong>").append(zona.getNomOficial()).append("</strong><br>")
+                    .append("&nbsp;&nbsp;Coordenades: [").append(zona.getX1()).append(",").append(zona.getY1()).append("] - [")
+                    .append(zona.getX2()).append(",").append(zona.getY2()).append("]<br><br>");
+        }
+
+        textCriatures.setText(Html.fromHtml(sb.toString()));
+        textCriatures.scrollTo(0, 0);
+    }
+
+    private void mostrarCriaturesCapturades() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("<h2>Criatures capturades</h2><br>");
+
+        // Ordenar criaturas por nombre
+        TreeMap<String, Criatura> criaturesOrdenades = new TreeMap<>();
+        for (Criatura c : criaturesCapturades.keySet()) {
+            criaturesOrdenades.put(c.getNom(), c);
+        }
+
+        for (Map.Entry<String, Criatura> entry : criaturesOrdenades.entrySet()) {
+            Criatura c = entry.getValue();
+            Zona z = criaturesCapturades.get(c);
+            sb.append("<font color='").append(String.format("#%06X", (0xFFFFFF & c.getGenere().getColorDetector())))
+                    .append("'>").append(c.getNom()).append("</font><br>")
+                    .append("&nbsp;&nbsp;Zona: ").append(z != null ? z.getNomOficial() : "Desconeguda").append("<br>")
+                    .append("&nbsp;&nbsp;Gènere: ").append(c.getGenere().getName()).append("<br><br>");
+        }
+
+        textCriatures.setText(Html.fromHtml(sb.toString()));
+        textCriatures.scrollTo(0, 0);
+    }
+
+    private void mostrarCriaturesEscapades() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("<h2>Criatures escapades</h2><br>");
+
+        // Ordenar criaturas por nombre
+        TreeMap<String, Criatura> criaturesOrdenades = new TreeMap<>();
+        for (Criatura c : criaturesEscapades.keySet()) {
+            criaturesOrdenades.put(c.getNom(), c);
+        }
+
+        for (Map.Entry<String, Criatura> entry : criaturesOrdenades.entrySet()) {
+            Criatura c = entry.getValue();
+            Zona z = criaturesEscapades.get(c);
+            sb.append("<font color='").append(String.format("#%06X", (0xFFFFFF & c.getGenere().getColorDetector())))
+                    .append("'>").append(c.getNom()).append("</font><br>")
+                    .append("&nbsp;&nbsp;Zona: ").append(z != null ? z.getNomOficial() : "Desconeguda").append("<br>")
+                    .append("&nbsp;&nbsp;Gènere: ").append(c.getGenere().getName()).append("<br><br>");
+        }
+
+        textCriatures.setText(Html.fromHtml(sb.toString()));
+        textCriatures.scrollTo(0, 0);
     }
 }
