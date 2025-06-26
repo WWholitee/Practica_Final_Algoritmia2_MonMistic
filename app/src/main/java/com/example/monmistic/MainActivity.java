@@ -43,6 +43,7 @@ import org.json.JSONObject;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Random;
@@ -71,10 +72,10 @@ public class MainActivity extends AppCompatActivity {
     TreeMap<String, Zona> catalegZonesMapa = new TreeMap<>();
 
     // Nivell 1:    Clau: Zona      Valor: HashMap <String, List<Criatura>>
-    // Nivell 2:    Clau: Gènere    Valor: Llista enllaçada de criatures
-    private TreeMap<String, Map<Genere, UnsortedLinkedListSet<Criatura>>> catalegCriatures;
-    private HashMap<Criatura, Zona> criaturesCapturades;
-    private HashMap<Criatura, Zona> criaturesEscapades;
+    // Nivell 2:    Clau: Gènere    Valor: HashSet a criatures per recuperació ràpida de les dades
+    private TreeMap<String, Map<Genere, HashSet<Criatura>>> catalegCriatures;
+    private TreeMap<Criatura, Zona> criaturesCapturades;
+    private TreeMap<Criatura, Zona> criaturesEscapades;
 
 
 
@@ -330,8 +331,8 @@ public class MainActivity extends AppCompatActivity {
     private void generarCriatures(){
         // Inicialització dels catàlegs de criatures
         catalegCriatures = new TreeMap<>(); // Catàleg principal de criatures per zona i gènere
-        criaturesCapturades = new HashMap<>(); // Llista de criatures capturades (inicialment buida)
-        criaturesEscapades = new HashMap<>(); // Llista de criatures escapades (inicialment buida)
+        criaturesCapturades = new TreeMap<>(); // Llista de criatures capturades (inicialment buida)
+        criaturesEscapades = new TreeMap<>(); // Llista de criatures escapades (inicialment buida)
 
         Genere aiguard = new Genere("aiguard", 0.01f, Color.MAGENTA, 10, 0);
         Genere focguard = new Genere("focguard", 0.015f, Color.GREEN, 15, 1);
@@ -360,7 +361,7 @@ public class MainActivity extends AppCompatActivity {
 
 
                 // 1. Obtenir el mapa de gèneres per a la zona actual.
-                Map<Genere, UnsortedLinkedListSet<Criatura>> criaturesPerGenereEnZona;
+                Map<Genere, HashSet<Criatura>> criaturesPerGenereEnZona;
                 Log.d("Llegim de zona: ", " x: " + x + " y: " + y);
 
                 // Controlam que si una criatura apareix en una posició sense zona asignada
@@ -380,12 +381,12 @@ public class MainActivity extends AppCompatActivity {
                 }
 
                 // 2. Obtenir la llista de criatures per al gènere actual dins d'aquest mapa de gèneres.
-                UnsortedLinkedListSet<Criatura> llistaCriaturesDelGenere;
+                HashSet<Criatura> llistaCriaturesDelGenere;
 
                 if (criaturesPerGenereEnZona.containsKey(genere)) {
                     llistaCriaturesDelGenere = criaturesPerGenereEnZona.get(genere);
                 } else {
-                    llistaCriaturesDelGenere = new UnsortedLinkedListSet<>();
+                    llistaCriaturesDelGenere = new HashSet<>();
                     criaturesPerGenereEnZona.put(genere, llistaCriaturesDelGenere);
                 }
 
@@ -573,8 +574,8 @@ public class MainActivity extends AppCompatActivity {
             float criaturaSize = 20; // Mida del quadrat de la criatura en píxels de pantalla
 
             if (catalegCriatures != null) {
-                for (Map.Entry<String, Map<Genere, UnsortedLinkedListSet<Criatura>>> entryZona : catalegCriatures.entrySet()) {
-                    for (Map.Entry<Genere, UnsortedLinkedListSet<Criatura>> entryGenere : entryZona.getValue().entrySet()) {
+                for (Map.Entry<String, Map<Genere, HashSet<Criatura>>> entryZona : catalegCriatures.entrySet()) {
+                    for (Map.Entry<Genere, HashSet<Criatura>> entryGenere : entryZona.getValue().entrySet()) {
                         for (Criatura criatura : entryGenere.getValue()) {
                             // Calcular les coordenades de la criatura a la pantalla
                             // posX i posY són les coordenades absolutes de la criatura al bitmap
@@ -748,9 +749,9 @@ public class MainActivity extends AppCompatActivity {
 
         Genere nomGenere = criatura.getGenere();
 
-        Map<Genere, UnsortedLinkedListSet<Criatura>> criaturesPerGenereEnZona = catalegCriatures.get(nomZona);
+        Map<Genere, HashSet<Criatura>> criaturesPerGenereEnZona = catalegCriatures.get(nomZona);
         if (criaturesPerGenereEnZona != null) {
-            UnsortedLinkedListSet<Criatura> llistaCriaturesDelGenere = criaturesPerGenereEnZona.get(nomGenere);
+            HashSet<Criatura> llistaCriaturesDelGenere = criaturesPerGenereEnZona.get(nomGenere);
             if (llistaCriaturesDelGenere != null) {
                 boolean removed = llistaCriaturesDelGenere.remove(criatura);
                 if (removed) {
@@ -769,10 +770,10 @@ public class MainActivity extends AppCompatActivity {
     private void criaturesEscapen(float mapX, float mapY){
         boolean canviDeZona = false;
         // Iterar sobre totes les zones i tots els gèneres per trobar qualsevol criatura
-        for (Map.Entry<String, Map<Genere, UnsortedLinkedListSet<Criatura>>> entryZona : catalegCriatures.entrySet()) {
-            Map<Genere, UnsortedLinkedListSet<Criatura>> criaturesPerGenereEnZona = entryZona.getValue();
+        for (Map.Entry<String, Map<Genere, HashSet<Criatura>>> entryZona : catalegCriatures.entrySet()) {
+            Map<Genere, HashSet<Criatura>> criaturesPerGenereEnZona = entryZona.getValue();
             if (criaturesPerGenereEnZona != null) {
-                for (Map.Entry<Genere, UnsortedLinkedListSet<Criatura>> entryGenere : criaturesPerGenereEnZona.entrySet()) {
+                for (Map.Entry<Genere, HashSet<Criatura>> entryGenere : criaturesPerGenereEnZona.entrySet()) {
                     Iterator<Criatura> it = entryGenere.getValue().iterator();
                     while (it.hasNext()) {
                         Criatura criatura = it.next();
@@ -792,10 +793,10 @@ public class MainActivity extends AppCompatActivity {
 
     private Criatura cercarCriaturesProperes(float mapX, float mapY){
         // Iterar sobre totes les zones i tots els gèneres per trobar qualsevol criatura
-        for (Map.Entry<String, Map<Genere, UnsortedLinkedListSet<Criatura>>> entryZona : catalegCriatures.entrySet()) {
-            Map<Genere, UnsortedLinkedListSet<Criatura>> criaturesPerGenereEnZona = entryZona.getValue();
+        for (Map.Entry<String, Map<Genere, HashSet<Criatura>>> entryZona : catalegCriatures.entrySet()) {
+            Map<Genere, HashSet<Criatura>> criaturesPerGenereEnZona = entryZona.getValue();
             if (criaturesPerGenereEnZona != null) {
-                for (Map.Entry<Genere, UnsortedLinkedListSet<Criatura>> entryGenere : criaturesPerGenereEnZona.entrySet()) {
+                for (Map.Entry<Genere, HashSet<Criatura>> entryGenere : criaturesPerGenereEnZona.entrySet()) {
                     Iterator<Criatura> it = entryGenere.getValue().iterator();
                     while (it.hasNext()) {
                         Criatura criatura = it.next();
