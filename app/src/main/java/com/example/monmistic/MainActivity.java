@@ -24,6 +24,7 @@ import android.view.ScaleGestureDetector;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.animation.LinearInterpolator;
 import android.widget.Button;
 import android.widget.ImageView;
@@ -47,9 +48,11 @@ import org.json.JSONObject;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import java.util.TreeMap;
 
 public class MainActivity extends AppCompatActivity {
@@ -71,15 +74,16 @@ public class MainActivity extends AppCompatActivity {
     private String conjuntoVisible = "";
     Map<String, String> reglesDeJoc;
 
+
+
     private ZonaTrie catalegZonesTrie;
     TreeMap<String, Zona> catalegZonesMapa = new TreeMap<>();
 
     // Nivell 1:    Clau: Zona      Valor: HashMap <String, List<Criatura>>
-    // Nivell 2:    Clau: Gènere    Valor: Llista enllaçada de criatures
-    private TreeMap<String, Map<Genere, UnsortedLinkedListSet<Criatura>>> catalegCriatures;
-    private HashMap<Criatura, Zona> criaturesCapturades;
-    private HashMap<Criatura, Zona> criaturesEscapades;
-
+    // Nivell 2:    Clau: Gènere    Valor: HashSet a criatures per recuperació ràpida de les dades
+    private TreeMap<String, Map<Genere, HashSet<Criatura>>> catalegCriatures;
+    private TreeMap<Criatura, Zona> criaturesCapturades;
+    private TreeMap<Criatura, Zona> criaturesEscapades;
 
 
     private Context context;
@@ -188,6 +192,7 @@ public class MainActivity extends AppCompatActivity {
             visibilizar("inventari");
             if (zoneUpdateTimer != null) {
                 zoneUpdateTimer.cancel();
+                mostrarInventari();
             }
         });
 
@@ -334,12 +339,129 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void inicializarConjuntoInventario(){
-        SurfaceView sv = findViewById(R.id.surfaceView);
+        SurfaceView svInventari = findViewById(R.id.surfaceView3); // Cambiado a svInventari para claridad
 
         inventariViews = new UnsortedLinkedListSet<View>();
-        inventariViews.add(sv);
+        inventariViews.add(svInventari);
+
+        svInventari.getHolder().addCallback(new SurfaceHolder.Callback() {
+            @Override
+            public void surfaceCreated(@NonNull SurfaceHolder holder) {
+                mostrarInventari();
+            }
+
+            @Override
+            public void surfaceChanged(@NonNull SurfaceHolder holder, int format, int width, int height) {}
+
+            @Override
+            public void surfaceDestroyed(@NonNull SurfaceHolder holder) {}
+        });
+
+
     }
 
+    private void mostrarInventari() {
+        SurfaceView svInventari = findViewById(R.id.surfaceView3);
+
+        if (svInventari.getHolder().getSurface().isValid()) {
+            Canvas canvas = svInventari.getHolder().lockCanvas();
+            try {
+                // Limpiar el canvas
+                canvas.drawColor(Color.WHITE);
+
+                // Configuración de dimensiones
+                int padding = 20;
+                int screenWidth = svInventari.getWidth();
+                int screenHeight = svInventari.getHeight();
+
+                // Calcular tamaño de imágenes para que quepan 8 por fila
+                int itemSize = (screenWidth - (padding * 9)) / 8; // 8 imágenes + márgenes
+                itemSize = Math.min(itemSize, (screenHeight - padding * 5) / 4); // Ajustar por altura
+
+                // Precargar el check
+                Bitmap check = BitmapFactory.decodeResource(getResources(), R.drawable.check);
+                check = Bitmap.createScaledBitmap(check, itemSize, itemSize, true);
+
+                // Coordenadas iniciales
+                int currentY = padding;
+
+                // Lista ordenada de géneros
+                Genere[] generes = {
+                        new Genere("aiguard", 0.01f, Color.MAGENTA, 10, 0),
+                        new Genere("focguard", 0.015f, Color.GREEN, 15, 1),
+                        new Genere("tornadrac", 0.02f, Color.RED, 20, 2.5f),
+                        new Genere("vapordrac", 0.025f, Color.BLUE, 30, 3.5f)
+                };
+
+                // Pintar cada género en su fila
+                for (Genere genere : generes) {
+                    int currentX = padding;
+
+                    // Título del género
+                    Paint paint = new Paint();
+                    paint.setColor(Color.BLACK);
+                    paint.setTextSize(24);
+                    canvas.drawText(genere.getName().toUpperCase(), currentX, currentY - 5, paint);
+
+                    // Pintar las 8 especies en línea horizontal
+                    for (int especie = 1; especie <= 8; especie++) {
+                        String imageName = genere.getName().toLowerCase() + especie;
+                        int resId = getResources().getIdentifier(imageName, "drawable", getPackageName());
+
+                        if (resId != 0) {
+                            Bitmap bmpCriatura = BitmapFactory.decodeResource(getResources(), resId);
+                            Rect dst = new Rect(currentX, currentY, currentX + itemSize, currentY + itemSize);
+
+                            // Dibujar la criatura
+                            Paint paintCriatura = new Paint();
+                            if (!esCriaturaCapturada(genere, especie)) {
+                                paintCriatura.setAlpha(128); // 50% transparencia si no está capturada
+                            }
+                            canvas.drawBitmap(bmpCriatura, null, dst, null);
+
+                            // Dibujar check si está capturada
+                            if (esCriaturaCapturada(genere, especie)) {
+                                Log.d("DIBUJAR_CHECK", "Dibujando check para: " + genere.getName() + especie);
+
+                                // Crear un Paint con transparencia para el check (opcional)
+                                Paint checkPaint = new Paint();
+                                checkPaint.setAlpha(180); // Semi-transparente
+
+                                canvas.drawBitmap(check, null, dst, checkPaint);
+                            }
+                        }
+
+                        currentX += itemSize + padding;
+                    }
+
+                    currentY += itemSize + padding;
+                }
+
+            } finally {
+                if (canvas != null) {
+                    svInventari.getHolder().unlockCanvasAndPost(canvas);
+                }
+            }
+        }
+    }
+
+    // Métodos auxiliares (igual que los tuyos)
+    private Set<Genere> getGeneresUnics() {
+        Set<Genere> generes = new HashSet<>();
+        for (Criatura c : criaturesCapturades.keySet()) {
+            generes.add(c.getGenere());
+        }
+        return generes;
+    }
+
+    private boolean esCriaturaCapturada(Genere genere, int especie) {
+        for (Criatura c : criaturesCapturades.keySet()) {
+            if (c.getGenere().equals(genere) && c.getEspecie() == especie) {
+                return true;
+            }
+        }
+        return false;
+    }
     private void visibilizar(String conjunto){
         for (View view : mapaViews     ) view.setVisibility(View.INVISIBLE);
         for (View view : craituresViews) view.setVisibility(View.INVISIBLE);
@@ -379,8 +501,8 @@ public class MainActivity extends AppCompatActivity {
     private void generarCriatures(){
         // Inicialització dels catàlegs de criatures
         catalegCriatures = new TreeMap<>(); // Catàleg principal de criatures per zona i gènere
-        criaturesCapturades = new HashMap<>(); // Llista de criatures capturades (inicialment buida)
-        criaturesEscapades = new HashMap<>(); // Llista de criatures escapades (inicialment buida)
+        criaturesCapturades = new TreeMap<>(); // Llista de criatures capturades (inicialment buida)
+        criaturesEscapades = new TreeMap<>(); // Llista de criatures escapades (inicialment buida)
 
         Genere aiguard = new Genere("aiguard", 0.01f, Color.MAGENTA, 10, 0);
         Genere focguard = new Genere("focguard", 0.015f, Color.GREEN, 15, 1);
@@ -409,7 +531,7 @@ public class MainActivity extends AppCompatActivity {
 
 
                 // 1. Obtenir el mapa de gèneres per a la zona actual.
-                Map<Genere, UnsortedLinkedListSet<Criatura>> criaturesPerGenereEnZona;
+                Map<Genere, HashSet<Criatura>> criaturesPerGenereEnZona;
                 Log.d("Llegim de zona: ", " x: " + x + " y: " + y);
 
                 // Controlam que si una criatura apareix en una posició sense zona asignada
@@ -429,12 +551,12 @@ public class MainActivity extends AppCompatActivity {
                 }
 
                 // 2. Obtenir la llista de criatures per al gènere actual dins d'aquest mapa de gèneres.
-                UnsortedLinkedListSet<Criatura> llistaCriaturesDelGenere;
+                HashSet<Criatura> llistaCriaturesDelGenere;
 
                 if (criaturesPerGenereEnZona.containsKey(genere)) {
                     llistaCriaturesDelGenere = criaturesPerGenereEnZona.get(genere);
                 } else {
-                    llistaCriaturesDelGenere = new UnsortedLinkedListSet<>();
+                    llistaCriaturesDelGenere = new HashSet<>();
                     criaturesPerGenereEnZona.put(genere, llistaCriaturesDelGenere);
                 }
 
@@ -511,7 +633,11 @@ public class MainActivity extends AppCompatActivity {
                 }
                 CharSequence text = "Has capturat un " + criatura.getGenere().getName();
                 eliminarDelCataleg(criatura);
-                criaturesCapturades.put(criatura,findZone((int)criatura.getX(),(int)criatura.getY()));
+                // En el método combat(), cuando ganas el combate:
+                Zona zonaCaptura = findZone((int)criatura.getX(), (int)criatura.getY());
+                mostrarInventari();
+                criaturesCapturades.put(criatura, zonaCaptura); // Guardas criatura + zona
+                //criaturesCapturades.put(criatura,findZone((int)criatura.getX(),(int)criatura.getY()));
                 textResultat.setText(text);
                 Toast toast = Toast.makeText(context,text,duration);
                 toast.show();
@@ -634,8 +760,8 @@ public class MainActivity extends AppCompatActivity {
             float criaturaSize = 20; // Mida del quadrat de la criatura en píxels de pantalla
 
             if (catalegCriatures != null) {
-                for (Map.Entry<String, Map<Genere, UnsortedLinkedListSet<Criatura>>> entryZona : catalegCriatures.entrySet()) {
-                    for (Map.Entry<Genere, UnsortedLinkedListSet<Criatura>> entryGenere : entryZona.getValue().entrySet()) {
+                for (Map.Entry<String, Map<Genere, HashSet<Criatura>>> entryZona : catalegCriatures.entrySet()) {
+                    for (Map.Entry<Genere, HashSet<Criatura>> entryGenere : entryZona.getValue().entrySet()) {
                         for (Criatura criatura : entryGenere.getValue()) {
                             // Calcular les coordenades de la criatura a la pantalla
                             // posX i posY són les coordenades absolutes de la criatura al bitmap
@@ -809,9 +935,9 @@ public class MainActivity extends AppCompatActivity {
 
         Genere nomGenere = criatura.getGenere();
 
-        Map<Genere, UnsortedLinkedListSet<Criatura>> criaturesPerGenereEnZona = catalegCriatures.get(nomZona);
+        Map<Genere, HashSet<Criatura>> criaturesPerGenereEnZona = catalegCriatures.get(nomZona);
         if (criaturesPerGenereEnZona != null) {
-            UnsortedLinkedListSet<Criatura> llistaCriaturesDelGenere = criaturesPerGenereEnZona.get(nomGenere);
+            HashSet<Criatura> llistaCriaturesDelGenere = criaturesPerGenereEnZona.get(nomGenere);
             if (llistaCriaturesDelGenere != null) {
                 boolean removed = llistaCriaturesDelGenere.remove(criatura);
                 if (removed) {
@@ -830,10 +956,10 @@ public class MainActivity extends AppCompatActivity {
     private void criaturesEscapen(float mapX, float mapY){
         boolean canviDeZona = false;
         // Iterar sobre totes les zones i tots els gèneres per trobar qualsevol criatura
-        for (Map.Entry<String, Map<Genere, UnsortedLinkedListSet<Criatura>>> entryZona : catalegCriatures.entrySet()) {
-            Map<Genere, UnsortedLinkedListSet<Criatura>> criaturesPerGenereEnZona = entryZona.getValue();
+        for (Map.Entry<String, Map<Genere, HashSet<Criatura>>> entryZona : catalegCriatures.entrySet()) {
+            Map<Genere, HashSet<Criatura>> criaturesPerGenereEnZona = entryZona.getValue();
             if (criaturesPerGenereEnZona != null) {
-                for (Map.Entry<Genere, UnsortedLinkedListSet<Criatura>> entryGenere : criaturesPerGenereEnZona.entrySet()) {
+                for (Map.Entry<Genere, HashSet<Criatura>> entryGenere : criaturesPerGenereEnZona.entrySet()) {
                     Iterator<Criatura> it = entryGenere.getValue().iterator();
                     while (it.hasNext()) {
                         Criatura criatura = it.next();
@@ -853,10 +979,10 @@ public class MainActivity extends AppCompatActivity {
 
     private Criatura cercarCriaturesProperes(float mapX, float mapY){
         // Iterar sobre totes les zones i tots els gèneres per trobar qualsevol criatura
-        for (Map.Entry<String, Map<Genere, UnsortedLinkedListSet<Criatura>>> entryZona : catalegCriatures.entrySet()) {
-            Map<Genere, UnsortedLinkedListSet<Criatura>> criaturesPerGenereEnZona = entryZona.getValue();
+        for (Map.Entry<String, Map<Genere, HashSet<Criatura>>> entryZona : catalegCriatures.entrySet()) {
+            Map<Genere, HashSet<Criatura>> criaturesPerGenereEnZona = entryZona.getValue();
             if (criaturesPerGenereEnZona != null) {
-                for (Map.Entry<Genere, UnsortedLinkedListSet<Criatura>> entryGenere : criaturesPerGenereEnZona.entrySet()) {
+                for (Map.Entry<Genere, HashSet<Criatura>> entryGenere : criaturesPerGenereEnZona.entrySet()) {
                     Iterator<Criatura> it = entryGenere.getValue().iterator();
                     while (it.hasNext()) {
                         Criatura criatura = it.next();
@@ -983,6 +1109,7 @@ public class MainActivity extends AppCompatActivity {
         return null;
     }
 
+
     private void iniciarTemporitzadorActualitzacioZona() {
         if (zoneUpdateTimer != null) {
             zoneUpdateTimer.cancel();
@@ -999,62 +1126,77 @@ public class MainActivity extends AppCompatActivity {
         }.start();
     }
 
-
+    //funciona bien hay que arreglar el formato
     private void mostrarCriaturesPerZona() {
         runOnUiThread(() -> {
             try {
                 StringBuilder sb = new StringBuilder();
-                sb.append("<h2>CRIATURES PER ZONA</h2><br><br>");
+                sb.append("<h2 style='color:#3F51B5;'>📊 CRIATURES PER ZONA</h2><br>");
 
                 if (catalegCriatures == null || catalegCriatures.isEmpty()) {
-                    sb.append("No s'han trobat dades de criatures per zona");
+                    sb.append("<i>No hi ha dades de criatures disponibles</i>");
                     textCriatures.setText(Html.fromHtml(sb.toString()));
                     return;
                 }
 
-                // Ordenar zonas alfabéticamente
-                TreeMap<String, Map<Genere, UnsortedLinkedListSet<Criatura>>> zonesOrdenades =
-                        new TreeMap<>(catalegCriatures);
+                // 1. Ordenar zonas alfabéticamente
+                TreeMap<String, Map<Genere, HashSet<Criatura>>> zonesOrdenades = new TreeMap<>(catalegCriatures);
 
-                for (Map.Entry<String, Map<Genere, UnsortedLinkedListSet<Criatura>>> entry : zonesOrdenades.entrySet()) {
-                    String zona = entry.getKey();
-                    Map<Genere, UnsortedLinkedListSet<Criatura>> criaturesPerGenere = entry.getValue();
+                // Contador total global
+                int totalGlobal = 0;
 
-                    sb.append("<b><font color='#0066CC'>").append(zona).append("</font></b><br>");
+                for (Map.Entry<String, Map<Genere, HashSet<Criatura>>> entryZona : zonesOrdenades.entrySet()) {
+                    String nomZona = entryZona.getKey();
+                    Map<Genere, HashSet<Criatura>> criaturesPerGenere = entryZona.getValue();
 
-                    if (criaturesPerGenere == null || criaturesPerGenere.isEmpty()) {
-                        sb.append("&nbsp;&nbsp;Sense criatures en aquesta zona<br>");
-                    } else {
-                        // Ordenar géneros alfabéticamente
-                        TreeMap<String, Genere> generesOrdenats = new TreeMap<>();
-                        for (Genere g : criaturesPerGenere.keySet()) {
-                            generesOrdenats.put(g.getName(), g);
-                        }
+                    // Cabecera de zona con contador
+                    int totalZona = 0;
+                    sb.append("<p style='margin-bottom:5px;'><b><font color='#0066CC'>")
+                            .append(nomZona)
+                            .append("</font>");
 
+                    // 2. Ordenar géneros alfabéticamente
+                    TreeMap<String, Genere> generesOrdenats = new TreeMap<>();
+                    for (Genere g : criaturesPerGenere.keySet()) {
+                        generesOrdenats.put(g.getName(), g);
+                    }
+
+                    // Pre-calcular totales por zona
+                    for (Genere g : generesOrdenats.values()) {
+                        totalZona += criaturesPerGenere.get(g).size();
+                    }
+                    totalGlobal += totalZona;
+
+                    sb.append(" (").append(totalZona).append(")</b></p>");
+
+                    // Detalle por género
+                    if (!criaturesPerGenere.isEmpty()) {
+                        sb.append("<div style='margin-left:15px;'>");
                         for (Map.Entry<String, Genere> entryGenere : generesOrdenats.entrySet()) {
                             Genere genere = entryGenere.getValue();
-                            int quantitat = 0;
+                            int quantitat = criaturesPerGenere.get(genere).size();
 
-                            // Contar criaturas
-                            Iterator<Criatura> it = criaturesPerGenere.get(genere).iterator();
-                            while (it.hasNext()) {
-                                it.next();
-                                quantitat++;
-                            }
-
-                            sb.append("&nbsp;&nbsp;• <font color='")
+                            sb.append("• <font color='")
                                     .append(String.format("#%06X", (0xFFFFFF & genere.getColorDetector())))
-                                    .append("'>").append(genere.getName()).append("</font>: ")
-                                    .append(quantitat).append("<br>");
+                                    .append("'>").append(genere.getName())
+                                    //.append("</font>: ")
+                                    .append(quantitat)
+                                    .append("<br>");
                         }
+                        sb.append("</div>");
                     }
                     sb.append("<br>");
                 }
 
+                // Footer con total general
+                sb.append("<hr><p><b>Total criatures: ").append(totalGlobal).append("</b></p>");
+
                 textCriatures.setText(Html.fromHtml(sb.toString()));
+                textCriatures.setMovementMethod(new ScrollingMovementMethod());
+
             } catch (Exception e) {
-                Log.e("ERROR", "Excepción en mostrarCriaturesPerZona: " + e.getMessage());
-                textCriatures.setText("Error al mostrar les dades");
+                Log.e("ERROR", "Excepción en mostrarCriaturesPerZona: " + e.getMessage(), e);
+                textCriatures.setText("Error al mostrar les dades. Revisa Logcat.");
             }
         });
     }
@@ -1070,66 +1212,133 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void mostrarZonesDelMapa() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("<h2>Zones del mapa</h2><br>");
+        runOnUiThread(() -> {
+            try {
+                StringBuilder sb = new StringBuilder();
+                sb.append("<h2 style='color:#3F51B5;'>🗺 ZONES DEL MAPA</h2><br>");
 
-        // Ordenar zonas por nombre
-        TreeMap<String, Zona> zonesOrdenades = new TreeMap<>(catalegZonesMapa);
+                if (catalegZonesMapa == null || catalegZonesMapa.isEmpty()) {
+                    sb.append("<i>No hi ha zones definides al mapa</i>");
+                    textCriatures.setText(Html.fromHtml(sb.toString()));
+                    return;
+                }
 
-        for (Map.Entry<String, Zona> entry : zonesOrdenades.entrySet()) {
-            Zona zona = entry.getValue();
-            sb.append("<strong>").append(zona.getNomOficial()).append("</strong><br>")
-                    .append("&nbsp;&nbsp;Coordenades: [").append(zona.getX1()).append(",").append(zona.getY1()).append("] - [")
-                    .append(zona.getX2()).append(",").append(zona.getY2()).append("]<br><br>");
-        }
+                // 1. Ordenar zonas alfabéticamente
+                TreeMap<String, Zona> zonesOrdenades = new TreeMap<>(catalegZonesMapa);
 
-        textCriatures.setText(Html.fromHtml(sb.toString()));
-        textCriatures.scrollTo(0, 0);
+                for (Map.Entry<String, Zona> entry : zonesOrdenades.entrySet()) {
+                    Zona zona = entry.getValue();
+                    int amplada = zona.getX2() - zona.getX1();
+                    int altura = zona.getY2() - zona.getY1();
+
+                    // Cabecera de zona con dimensiones
+                    sb.append("<p style='margin-bottom:5px;'><b><font color='#0066CC'>")
+                            .append(zona.getNomOficial())
+                           // .append("</font> (")
+                            .append(amplada).append("x").append(altura).append("px)</b></p>");
+
+                    // Detalle de coordenadas
+//                    sb.append("<div style='margin-left:15px;'>")
+//                            .append("• X: ").append(zona.getX1()).append(" → ").append(zona.getX2()).append("<br>")
+//                            .append("• Y: ").append(zona.getY1()).append(" → ").append(zona.getY2()).append("<br>")
+//                            .append("</div><br>");
+                }
+
+                // Footer con total
+                sb.append("<hr><p><b>Total zones: ").append(zonesOrdenades.size()).append("</b></p>");
+
+                textCriatures.setText(Html.fromHtml(sb.toString()));
+                textCriatures.setMovementMethod(new ScrollingMovementMethod());
+
+            } catch (Exception e) {
+                Log.e("ERROR", "Excepció en mostrarZonesDelMapa: " + e.getMessage(), e);
+                textCriatures.setText("Error al mostrar les zones. Revisa Logcat.");
+            }
+        });
     }
 
+    //funciona bien hay que arreglar el formato
     private void mostrarCriaturesCapturades() {
         StringBuilder sb = new StringBuilder();
-        sb.append("<h2>Criatures capturades</h2><br>");
+        sb.append("<h2>Criatures Capturades</h2><br>");
 
-        // Ordenar criaturas por nombre
-        TreeMap<String, Criatura> criaturesOrdenades = new TreeMap<>();
-        for (Criatura c : criaturesCapturades.keySet()) {
-            criaturesOrdenades.put(c.getNom(), c);
+        if (criaturesCapturades.isEmpty()) {
+            sb.append("Encara no has capturat cap criatura.<br>");
+        } else {
+            // Usamos TreeMap para ordenar alfabéticamente por nombre de criatura
+            TreeMap<String, Map.Entry<Criatura, Zona>> criaturesOrdenades = new TreeMap<>();
+
+            for (Map.Entry<Criatura, Zona> entry : criaturesCapturades.entrySet()) {
+                criaturesOrdenades.put(entry.getKey().getNom(), entry);
+            }
+
+            for (Map.Entry<String, Map.Entry<Criatura, Zona>> entry : criaturesOrdenades.entrySet()) {
+                Criatura c = entry.getValue().getKey();
+                Zona z = entry.getValue().getValue();
+
+                sb.append("<font color='")
+                        .append(String.format("#%06X", (0xFFFFFF & c.getGenere().getColorDetector())))
+                        .append("'><b>")
+                        .append(c.getGenere().getName())  // Ej: "tornadrac"
+                        .append(" ")
+                        .append(c.getEspecie())          // Ej: "3"
+                        //.append("</b></font><br>")
+                       // .append("&nbsp;&nbsp;• Zona: <i>")
+                        .append( z.getNomOficial())
+                        .append("</i><br>")
+                        .append("&nbsp;&nbsp;• Coord: [")
+                        .append((int)c.getX())
+                        .append(", ")
+                        .append((int)c.getY())
+                        .append("]<br><br>");
+            }
         }
 
-        for (Map.Entry<String, Criatura> entry : criaturesOrdenades.entrySet()) {
-            Criatura c = entry.getValue();
-            Zona z = criaturesCapturades.get(c);
-            sb.append("<font color='").append(String.format("#%06X", (0xFFFFFF & c.getGenere().getColorDetector())))
-                    .append("'>").append(c.getNom()).append("</font><br>")
-                    .append("&nbsp;&nbsp;Zona: ").append(z != null ? z.getNomOficial() : "Desconeguda").append("<br>")
-                    .append("&nbsp;&nbsp;Gènere: ").append(c.getGenere().getName()).append("<br><br>");
-        }
-
+        // Asegúrate de que el TextView tiene el movimiento habilitado
+        textCriatures.setMovementMethod(new ScrollingMovementMethod());
         textCriatures.setText(Html.fromHtml(sb.toString()));
         textCriatures.scrollTo(0, 0);
     }
-
     private void mostrarCriaturesEscapades() {
         StringBuilder sb = new StringBuilder();
-        sb.append("<h2>Criatures escapades</h2><br>");
+        sb.append("<h2 style='color:#FF5722;'>Criatures Escapades</h2><br>");
 
-        // Ordenar criaturas por nombre
-        TreeMap<String, Criatura> criaturesOrdenades = new TreeMap<>();
-        for (Criatura c : criaturesEscapades.keySet()) {
-            criaturesOrdenades.put(c.getNom(), c);
+        if (criaturesEscapades.isEmpty()) {
+            sb.append("<i>No s'ha escapat cap criatura.</i><br>");
+        } else {
+            // Usamos TreeMap para ordenar igual que en capturadas
+            TreeMap<String, Map.Entry<Criatura, Zona>> criaturesOrdenades = new TreeMap<>();
+
+            for (Map.Entry<Criatura, Zona> entry : criaturesEscapades.entrySet()) {
+                criaturesOrdenades.put(entry.getKey().getNom(), entry);
+            }
+
+            for (Map.Entry<String, Map.Entry<Criatura, Zona>> entry : criaturesOrdenades.entrySet()) {
+                Criatura c = entry.getValue().getKey();
+                Zona z = entry.getValue().getValue();
+
+                sb.append("<p style='margin-bottom:15px;'>")
+                        .append("<b><font color='")
+                        .append(String.format("#%06X", (0xFFFFFF & c.getGenere().getColorDetector())))
+                        .append("'>")
+                        .append(c.getGenere().getName())  // Ej: "tornadrac"
+                        .append(" ")
+                        .append(c.getEspecie())          // Ej: "3"
+                       // .append("</font></b><br>")
+                       // .append("&nbsp;&nbsp;• Zona: <i>")
+                        .append(z.getNomOficial())
+                        .append("</i><br>")
+                        .append("&nbsp;&nbsp;• Coord: [")
+                        .append((int)c.getX())
+                        .append(", ")
+                        .append((int)c.getY())
+                        .append("]<br>")
+                        .append("&nbsp;&nbsp;• Estat: <font color='#FF0000'>ESCAPADA</font></p>");
+            }
         }
 
-        for (Map.Entry<String, Criatura> entry : criaturesOrdenades.entrySet()) {
-            Criatura c = entry.getValue();
-            Zona z = criaturesEscapades.get(c);
-            sb.append("<font color='").append(String.format("#%06X", (0xFFFFFF & c.getGenere().getColorDetector())))
-                    .append("'>").append(c.getNom()).append("</font><br>")
-                    .append("&nbsp;&nbsp;Zona: ").append(z != null ? z.getNomOficial() : "Desconeguda").append("<br>")
-                    .append("&nbsp;&nbsp;Gènere: ").append(c.getGenere().getName()).append("<br><br>");
-        }
-
-        textCriatures.setText(Html.fromHtml(sb.toString()));
+        textCriatures.setMovementMethod(new ScrollingMovementMethod());
+        textCriatures.setText(Html.fromHtml(sb.toString(), Html.FROM_HTML_MODE_LEGACY));
         textCriatures.scrollTo(0, 0);
     }
 }
