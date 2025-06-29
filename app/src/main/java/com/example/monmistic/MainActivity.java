@@ -359,7 +359,6 @@ public class MainActivity extends AppCompatActivity {
 
 
     }
-
     private void mostrarInventari() {
         SurfaceView svInventari = findViewById(R.id.surfaceView3);
 
@@ -369,74 +368,69 @@ public class MainActivity extends AppCompatActivity {
                 // Limpiar el canvas
                 canvas.drawColor(Color.WHITE);
 
-                // Configuración de dimensiones
+                // Configuración inicial
                 int padding = 20;
                 int screenWidth = svInventari.getWidth();
                 int screenHeight = svInventari.getHeight();
-
-                // Calcular tamaño de imágenes para que quepan 8 por fila
                 int itemSize = (screenWidth - (padding * 9)) / 8; // 8 imágenes + márgenes
                 itemSize = Math.min(itemSize, (screenHeight - padding * 5) / 4); // Ajustar por altura
 
-                // Precargar el check
-                Bitmap check = BitmapFactory.decodeResource(getResources(), R.drawable.check);
-                check = Bitmap.createScaledBitmap(check, itemSize, itemSize, true);
 
-                // Coordenadas iniciales
+                int currentX = padding;
                 int currentY = padding;
+                Bitmap check = BitmapFactory.decodeResource(getResources(), R.drawable.check);
 
-                // Lista ordenada de géneros
-                Genere[] generes = {
-                        new Genere("aiguard", 0.01f, Color.MAGENTA, 10, 0),
-                        new Genere("focguard", 0.015f, Color.GREEN, 15, 1),
-                        new Genere("tornadrac", 0.02f, Color.RED, 20, 2.5f),
-                        new Genere("vapordrac", 0.025f, Color.BLUE, 30, 3.5f)
-                };
+                // Ordenar géneros alfabéticamente
+                TreeMap<String, Genere> generesOrdenats = new TreeMap<>();
+                for (Genere g : getGeneresUnics()) {
+                    generesOrdenats.put(g.getName(), g);
+                }
 
-                // Pintar cada género en su fila
-                for (Genere genere : generes) {
-                    int currentX = padding;
+                // Pintar cada género y sus especies
+                for (Map.Entry<String, Genere> entry : generesOrdenats.entrySet()) {
+                    Genere genere = entry.getValue();
 
                     // Título del género
                     Paint paint = new Paint();
                     paint.setColor(Color.BLACK);
-                    paint.setTextSize(24);
+                    paint.setTextSize(30);
                     canvas.drawText(genere.getName().toUpperCase(), currentX, currentY - 5, paint);
+                    currentY += 35;
 
-                    // Pintar las 8 especies en línea horizontal
+                    // Pintar especies (1-8)
                     for (int especie = 1; especie <= 8; especie++) {
+                        if (currentX + itemSize > svInventari.getWidth()) {
+                            currentX = padding;
+                            currentY += itemSize + padding;
+                        }
+
+                        // Obtener imagen de la criatura
                         String imageName = genere.getName().toLowerCase() + especie;
                         int resId = getResources().getIdentifier(imageName, "drawable", getPackageName());
 
                         if (resId != 0) {
                             Bitmap bmpCriatura = BitmapFactory.decodeResource(getResources(), resId);
                             Rect dst = new Rect(currentX, currentY, currentX + itemSize, currentY + itemSize);
-
-                            // Dibujar la criatura
-                            Paint paintCriatura = new Paint();
-                            if (!esCriaturaCapturada(genere, especie)) {
-                                paintCriatura.setAlpha(128); // 50% transparencia si no está capturada
-                            }
                             canvas.drawBitmap(bmpCriatura, null, dst, null);
 
-                            // Dibujar check si está capturada
+                            // Superponer check si está capturada
                             if (esCriaturaCapturada(genere, especie)) {
-                                Log.d("DIBUJAR_CHECK", "Dibujando check para: " + genere.getName() + especie);
-
-                                // Crear un Paint con transparencia para el check (opcional)
-                                Paint checkPaint = new Paint();
-                                checkPaint.setAlpha(180); // Semi-transparente
-
-                                canvas.drawBitmap(check, null, dst, checkPaint);
+                                Rect checkDst = new Rect(
+                                        currentX + itemSize - 40,
+                                        currentY + itemSize - 40,
+                                        currentX + itemSize,
+                                        currentY + itemSize
+                                );
+                                canvas.drawBitmap(check, null, checkDst, null);
                             }
                         }
 
                         currentX += itemSize + padding;
                     }
 
-                    currentY += itemSize + padding;
+                    currentX = padding;
+                    currentY += itemSize + padding + 15;
                 }
-
             } finally {
                 if (canvas != null) {
                     svInventari.getHolder().unlockCanvasAndPost(canvas);
@@ -445,14 +439,111 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    // Métodos auxiliares (igual que los tuyos)
+    // Métodos auxiliares
     private Set<Genere> getGeneresUnics() {
         Set<Genere> generes = new HashSet<>();
-        for (Criatura c : criaturesCapturades.keySet()) {
-            generes.add(c.getGenere());
+
+        // Recorrer todas las zonas del catálogo
+        for (Map<Genere, HashSet<Criatura>> criaturesPerGenere : catalegCriatures.values()) {
+            // Añadir todos los géneros encontrados en esta zona
+            generes.addAll(criaturesPerGenere.keySet());
         }
+
         return generes;
     }
+//    private void mostrarInventari() {
+//        SurfaceView svInventari = findViewById(R.id.surfaceView3);
+//
+//        if (svInventari.getHolder().getSurface().isValid()) {
+//            Canvas canvas = svInventari.getHolder().lockCanvas();
+//            try {
+//                // Limpiar el canvas
+//                canvas.drawColor(Color.WHITE);
+//
+//                // Configuración de dimensiones
+//                int padding = 20;
+//                int screenWidth = svInventari.getWidth();
+//                int screenHeight = svInventari.getHeight();
+//
+//                // Calcular tamaño de imágenes para que quepan 8 por fila
+//                int itemSize = (screenWidth - (padding * 9)) / 8; // 8 imágenes + márgenes
+//                itemSize = Math.min(itemSize, (screenHeight - padding * 5) / 4); // Ajustar por altura
+//
+//                // Precargar el check
+//                Bitmap check = BitmapFactory.decodeResource(getResources(), R.drawable.check);
+//                check = Bitmap.createScaledBitmap(check, itemSize, itemSize, true);
+//
+//                // Coordenadas iniciales
+//                int currentY = padding;
+//
+//                // Lista ordenada de géneros
+//                Genere[] generes = {
+//                        new Genere("aiguard", 0.01f, Color.MAGENTA, 10, 0),
+//                        new Genere("focguard", 0.015f, Color.GREEN, 15, 1),
+//                        new Genere("tornadrac", 0.02f, Color.RED, 20, 2.5f),
+//                        new Genere("vapordrac", 0.025f, Color.BLUE, 30, 3.5f)
+//                };
+//
+//                // Pintar cada género en su fila
+//                for (Genere genere : generes) {
+//                    int currentX = padding;
+//
+//                    // Título del género
+//                    Paint paint = new Paint();
+//                    paint.setColor(Color.BLACK);
+//                    paint.setTextSize(24);
+//                    //canvas.drawText(genere.getName().toUpperCase(), currentX, currentY - 5, paint);
+//
+//                    // Pintar las 8 especies en línea horizontal
+//                    for (int especie = 1; especie <= 8; especie++) {
+//                        String imageName = genere.getName().toLowerCase() + especie;
+//                        int resId = getResources().getIdentifier(imageName, "drawable", getPackageName());
+//
+//                        if (resId != 0) {
+//                            Bitmap bmpCriatura = BitmapFactory.decodeResource(getResources(), resId);
+//                            Rect dst = new Rect(currentX, currentY, currentX + itemSize, currentY + itemSize);
+//
+//                            // Dibujar la criatura
+//                            Paint paintCriatura = new Paint();
+//                            if (!esCriaturaCapturada(genere, especie)) {
+//                                paintCriatura.setAlpha(128); // 50% transparencia si no está capturada
+//                            }
+//                            canvas.drawBitmap(bmpCriatura, null, dst, null);
+//
+//                            // Dibujar check si está capturada
+//                            if (esCriaturaCapturada(genere, especie)) {
+//                                Log.d("DIBUJAR_CHECK", "Dibujando check para: " + genere.getName() + especie);
+//
+//                                // Crear un Paint con transparencia para el check (opcional)
+//                                Paint checkPaint = new Paint();
+//                                checkPaint.setAlpha(180); // Semi-transparente
+//
+//                                canvas.drawBitmap(check, null, dst, null);
+//                            }
+//                        }
+//
+//                        currentX += itemSize + padding;
+//                    }
+//
+//                    currentY += itemSize + padding;
+//                }
+//
+//            } finally {
+//                if (canvas != null) {
+//                    svInventari.getHolder().unlockCanvasAndPost(canvas);
+//                }
+//            }
+//        }
+//    }
+//
+//    // Métodos auxiliares (igual que los tuyos)
+//    private Set<Genere> getGeneresUnics() {
+//        Set<Genere> generes = new HashSet<>();
+//        for (Criatura c : criaturesCapturades.keySet()) {
+//            generes.add(c.getGenere());
+//        }
+//        return generes;
+//    }
 
     private boolean esCriaturaCapturada(Genere genere, int especie) {
         for (Criatura c : criaturesCapturades.keySet()) {
