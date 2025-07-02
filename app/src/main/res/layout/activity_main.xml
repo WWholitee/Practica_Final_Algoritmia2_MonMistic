@@ -238,6 +238,18 @@
         app:layout_constraintStart_toStartOf="@+id/guideline10"
         app:layout_constraintTop_toTopOf="@+id/guideline15" />
 
+    <SurfaceView
+        android:id="@+id/surfaceView3"
+        android:layout_width="450dp"
+        android:layout_height="350dp"
+        android:background="#00FFFFFF"
+        android:visibility="invisible"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintDimensionRatio="3:2"
+        app:layout_constraintEnd_toStartOf="@+id/guideline3"
+        app:layout_constraintStart_toStartOf="@+id/guideline10"
+        app:layout_constraintTop_toTopOf="@+id/guideline15" />
+
     <TextView
         android:id="@+id/textCriaturas"
         android:layout_width="450dp"
@@ -263,44 +275,47 @@
         app:layout_constraintBottom_toTopOf="@+id/guideline5"
         app:layout_constraintEnd_toEndOf="@+id/surfaceView" />
 
-    <RadioButton
-        android:id="@+id/radioButton"
+    <RadioGroup
+
+        android:id="@+id/radioGroupCriatures"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginEnd="80dp"
-        android:text="RadioButton"
-        android:visibility="invisible"
-        app:layout_constraintBottom_toTopOf="@+id/radioButton2"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="48dp"
+        android:orientation="vertical"
         app:layout_constraintEnd_toStartOf="@+id/guideline3"
-        app:layout_constraintStart_toStartOf="@+id/guideline16" />
+        app:layout_constraintTop_toTopOf="@+id/guideline">
 
-    <RadioButton
-        android:id="@+id/radioButton4"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="RadioButton"
-        android:visibility="invisible"
-        app:layout_constraintBottom_toTopOf="@+id/radioButton"
-        app:layout_constraintEnd_toEndOf="@+id/radioButton" />
+        <RadioButton
+            android:id="@+id/radioButtonCriaturesZona"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="80dp"
+            android:text="Criatures per zona"
+            android:visibility="invisible" />
 
-    <RadioButton
-        android:id="@+id/radioButton2"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="RadioButton"
-        android:visibility="invisible"
-        app:layout_constraintBottom_toTopOf="@+id/radioButton3"
-        app:layout_constraintEnd_toEndOf="@+id/radioButton" />
+        <RadioButton
+            android:id="@+id/radioButtonZonesMapa"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Zones del mapa"
+            android:visibility="invisible" />
 
-    <RadioButton
-        android:id="@+id/radioButton3"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="10dp"
-        android:text="RadioButton"
-        android:visibility="invisible"
-        app:layout_constraintBottom_toBottomOf="@+id/surfaceView"
-        app:layout_constraintEnd_toEndOf="@+id/radioButton" />
+        <RadioButton
+            android:id="@+id/radioButtonCapturades"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Criatures capturades"
+            android:visibility="invisible" />
+
+        <RadioButton
+            android:id="@+id/radioButtonEscapades"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="10dp"
+            android:text="Criatures escapades"
+            android:visibility="invisible" />
+    </RadioGroup>
 
     <TextView
         android:id="@+id/NomZONA"

@@ -9,6 +9,10 @@ public class Criatura implements Comparable<Criatura> { // Implementem Comparabl
     private int especie; // Número aleatori de 1 a 8
     private float x,y;
 
+    // La zona correspon a la zona emmagatcemada al catàleg i pot diferir de X i Y en el moment
+    // exacte en el que la criatura es mou d'una zona a un altre
+    private String zonaActual;
+
 
     public Criatura(int id, Genere genere, int especie, float x, float y) {
         this.id = id;
@@ -16,7 +20,8 @@ public class Criatura implements Comparable<Criatura> { // Implementem Comparabl
         this.especie = especie;
         this.x = x;
         this.y = y;
-        this.nom = genere.toString().concat(String.valueOf(especie)).concat("_").concat(String.valueOf(id));
+        this.nom =  genere.getName() + especie + "_" + id;
+        this.zonaActual = null; // S'inicialitza a null; el valor correcte es posarà a generarCriatures
     }
 
     // Getters
@@ -50,6 +55,14 @@ public class Criatura implements Comparable<Criatura> { // Implementem Comparabl
 
     public void setY(float newY){
         this.y = newY;
+    }
+
+    public String getZonaActualCataleg() {
+        return zonaActual;
+    }
+
+    public void setZonaActualCataleg(String zonaActualCataleg) {
+        this.zonaActual = zonaActualCataleg;
     }
 
     /**

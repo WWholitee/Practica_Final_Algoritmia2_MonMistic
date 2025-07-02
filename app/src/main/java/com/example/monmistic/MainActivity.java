@@ -15,16 +15,21 @@ import android.graphics.Rect;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.os.CountDownTimer;
+import android.os.Handler;
+import android.text.Html;
+import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.animation.LinearInterpolator;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.RadioButton;
+import android.widget.RadioGroup;
 import android.widget.TextView;
 import android.widget.EditText;
 import android.widget.Toast;
@@ -42,11 +47,14 @@ import org.json.JSONObject;
 
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 import java.util.TreeMap;
 
 public class MainActivity extends AppCompatActivity {
@@ -68,6 +76,8 @@ public class MainActivity extends AppCompatActivity {
     private String conjuntoVisible = "";
     Map<String, String> reglesDeJoc;
 
+
+
     private ZonaTrie catalegZonesTrie;
     TreeMap<String, Zona> catalegZonesMapa = new TreeMap<>();
 
@@ -76,7 +86,6 @@ public class MainActivity extends AppCompatActivity {
     private TreeMap<String, Map<Genere, HashSet<Criatura>>> catalegCriatures;
     private TreeMap<Criatura, Zona> criaturesCapturades;
     private TreeMap<Criatura, Zona> criaturesEscapades;
-
 
 
     private Context context;
@@ -96,6 +105,7 @@ public class MainActivity extends AppCompatActivity {
 
     private CountDownTimer zoneUpdateTimer;
     private Dialog currentCombatDialog = null;
+    private RadioButton currentlySelectedRadioButton = null;
 
 
     private final int DISTANCIA_ESCAPE = 200;
@@ -184,6 +194,7 @@ public class MainActivity extends AppCompatActivity {
             visibilizar("inventari");
             if (zoneUpdateTimer != null) {
                 zoneUpdateTimer.cancel();
+                mostrarInventari();
             }
         });
 
@@ -271,27 +282,279 @@ public class MainActivity extends AppCompatActivity {
     public void inicializarConjuntoCriaturas(){
         SurfaceView sv2 = findViewById(R.id.surfaceView2);
         textCriatures = findViewById(R.id.textCriaturas);
-        RadioButton rb1 = findViewById(R.id.radioButton);
-        RadioButton rb2 = findViewById(R.id.radioButton2);
-        RadioButton rb3 = findViewById(R.id.radioButton3);
-        RadioButton rb4 = findViewById(R.id.radioButton4);
+        RadioGroup radioGroup = findViewById(R.id.radioGroupCriatures);
+        RadioButton rbCriaturesZona = findViewById(R.id.radioButtonCriaturesZona);
+        RadioButton rbZonesMapa = findViewById(R.id.radioButtonZonesMapa);
+        RadioButton rbCapturades = findViewById(R.id.radioButtonCapturades);
+        RadioButton rbEscapades = findViewById(R.id.radioButtonEscapades);
 
         craituresViews = new UnsortedLinkedListSet<View>();
         craituresViews.add(sv2);
         craituresViews.add(textCriatures);
-        craituresViews.add(rb1);
-        craituresViews.add(rb2);
-        craituresViews.add(rb3);
-        craituresViews.add(rb4);
+        craituresViews.add(radioGroup);
+        craituresViews.add(rbCriaturesZona);
+        craituresViews.add(rbZonesMapa);
+        craituresViews.add(rbCapturades);
+        craituresViews.add(rbEscapades);
+
+        View.OnClickListener radioButtonClickListener = v -> {
+            RadioButton clickedRadioButton = (RadioButton) v;
+
+            if (clickedRadioButton == currentlySelectedRadioButton) {
+                // Si se hace clic en el ya seleccionado, deseleccionar
+                radioGroup.clearCheck();
+                currentlySelectedRadioButton = null;
+                textCriatures.setText(""); // Limpiar el texto
+            } else {
+                // Seleccionar el nuevo RadioButton
+                currentlySelectedRadioButton = clickedRadioButton;
+                clickedRadioButton.setChecked(true);
+
+                // Mostrar el contenido correspondiente
+                if (clickedRadioButton == rbCriaturesZona) {
+                    mostrarCriaturesPerZona();
+                } else if (clickedRadioButton == rbZonesMapa) {
+                    mostrarZonesDelMapa();
+                } else if (clickedRadioButton == rbCapturades) {
+                    mostrarCriaturesCapturades();
+                } else if (clickedRadioButton == rbEscapades) {
+                    mostrarCriaturesEscapades();
+                }
+            }
+        };
+
+        // Asignar el listener a cada RadioButton
+        rbCriaturesZona.setOnClickListener(radioButtonClickListener);
+        rbZonesMapa.setOnClickListener(radioButtonClickListener);
+        rbCapturades.setOnClickListener(radioButtonClickListener);
+        rbEscapades.setOnClickListener(radioButtonClickListener);
+
+        // Listener para detectar cambios automáticos (por si acaso)
+        radioGroup.setOnCheckedChangeListener((group, checkedId) -> {
+            // Este listener se mantiene pero no es estrictamente necesario
+        });
+
+
+
+        // Habilitar scrolling en el TextView
+        textCriatures.setMovementMethod(new ScrollingMovementMethod());
     }
 
     public void inicializarConjuntoInventario(){
-        SurfaceView sv = findViewById(R.id.surfaceView);
+        SurfaceView svInventari = findViewById(R.id.surfaceView3); // Cambiado a svInventari para claridad
 
         inventariViews = new UnsortedLinkedListSet<View>();
-        inventariViews.add(sv);
+        inventariViews.add(svInventari);
+
+        svInventari.getHolder().addCallback(new SurfaceHolder.Callback() {
+            @Override
+            public void surfaceCreated(@NonNull SurfaceHolder holder) {
+                mostrarInventari();
+            }
+
+            @Override
+            public void surfaceChanged(@NonNull SurfaceHolder holder, int format, int width, int height) {}
+
+            @Override
+            public void surfaceDestroyed(@NonNull SurfaceHolder holder) {}
+        });
+
+
+    }
+    private void mostrarInventari() {
+        SurfaceView svInventari = findViewById(R.id.surfaceView3);
+
+        if (svInventari.getHolder().getSurface().isValid()) {
+            Canvas canvas = svInventari.getHolder().lockCanvas();
+            try {
+                // Limpiar el canvas
+                canvas.drawColor(Color.WHITE);
+
+                // Configuración inicial
+                int padding = 20;
+                int screenWidth = svInventari.getWidth();
+                int screenHeight = svInventari.getHeight();
+                int itemSize = (screenWidth - (padding * 9)) / 8; // 8 imágenes + márgenes
+                itemSize = Math.min(itemSize, (screenHeight - padding * 5) / 4); // Ajustar por altura
+
+
+                int currentX = padding;
+                int currentY = padding;
+                Bitmap check = BitmapFactory.decodeResource(getResources(), R.drawable.check);
+
+                // Ordenar géneros alfabéticamente
+                TreeMap<String, Genere> generesOrdenats = new TreeMap<>();
+                for (Genere g : getGeneresUnics()) {
+                    generesOrdenats.put(g.getName(), g);
+                }
+
+                // Pintar cada género y sus especies
+                for (Map.Entry<String, Genere> entry : generesOrdenats.entrySet()) {
+                    Genere genere = entry.getValue();
+
+                    // Título del género
+                    Paint paint = new Paint();
+                    paint.setColor(Color.BLACK);
+                    paint.setTextSize(30);
+                    canvas.drawText(genere.getName().toUpperCase(), currentX, currentY - 5, paint);
+                    currentY += 35;
+
+                    // Pintar especies (1-8)
+                    for (int especie = 1; especie <= 8; especie++) {
+                        if (currentX + itemSize > svInventari.getWidth()) {
+                            currentX = padding;
+                            currentY += itemSize + padding;
+                        }
+
+                        // Obtener imagen de la criatura
+                        String imageName = genere.getName().toLowerCase() + especie;
+                        int resId = getResources().getIdentifier(imageName, "drawable", getPackageName());
+
+                        if (resId != 0) {
+                            Bitmap bmpCriatura = BitmapFactory.decodeResource(getResources(), resId);
+                            Rect dst = new Rect(currentX, currentY, currentX + itemSize, currentY + itemSize);
+                            canvas.drawBitmap(bmpCriatura, null, dst, null);
+
+                            // Superponer check si está capturada
+                            if (esCriaturaCapturada(genere, especie)) {
+                                Rect checkDst = new Rect(
+                                        currentX + itemSize - 40,
+                                        currentY + itemSize - 40,
+                                        currentX + itemSize,
+                                        currentY + itemSize
+                                );
+                                canvas.drawBitmap(check, null, checkDst, null);
+                            }
+                        }
+
+                        currentX += itemSize + padding;
+                    }
+
+                    currentX = padding;
+                    currentY += itemSize + padding + 15;
+                }
+            } finally {
+                if (canvas != null) {
+                    svInventari.getHolder().unlockCanvasAndPost(canvas);
+                }
+            }
+        }
     }
 
+    // Métodos auxiliares
+    private Set<Genere> getGeneresUnics() {
+        Set<Genere> generes = new HashSet<>();
+
+        // Recorrer todas las zonas del catálogo
+        for (Map<Genere, HashSet<Criatura>> criaturesPerGenere : catalegCriatures.values()) {
+            // Añadir todos los géneros encontrados en esta zona
+            generes.addAll(criaturesPerGenere.keySet());
+        }
+
+        return generes;
+    }
+//    private void mostrarInventari() {
+//        SurfaceView svInventari = findViewById(R.id.surfaceView3);
+//
+//        if (svInventari.getHolder().getSurface().isValid()) {
+//            Canvas canvas = svInventari.getHolder().lockCanvas();
+//            try {
+//                // Limpiar el canvas
+//                canvas.drawColor(Color.WHITE);
+//
+//                // Configuración de dimensiones
+//                int padding = 20;
+//                int screenWidth = svInventari.getWidth();
+//                int screenHeight = svInventari.getHeight();
+//
+//                // Calcular tamaño de imágenes para que quepan 8 por fila
+//                int itemSize = (screenWidth - (padding * 9)) / 8; // 8 imágenes + márgenes
+//                itemSize = Math.min(itemSize, (screenHeight - padding * 5) / 4); // Ajustar por altura
+//
+//                // Precargar el check
+//                Bitmap check = BitmapFactory.decodeResource(getResources(), R.drawable.check);
+//                check = Bitmap.createScaledBitmap(check, itemSize, itemSize, true);
+//
+//                // Coordenadas iniciales
+//                int currentY = padding;
+//
+//                // Lista ordenada de géneros
+//                Genere[] generes = {
+//                        new Genere("aiguard", 0.01f, Color.MAGENTA, 10, 0),
+//                        new Genere("focguard", 0.015f, Color.GREEN, 15, 1),
+//                        new Genere("tornadrac", 0.02f, Color.RED, 20, 2.5f),
+//                        new Genere("vapordrac", 0.025f, Color.BLUE, 30, 3.5f)
+//                };
+//
+//                // Pintar cada género en su fila
+//                for (Genere genere : generes) {
+//                    int currentX = padding;
+//
+//                    // Título del género
+//                    Paint paint = new Paint();
+//                    paint.setColor(Color.BLACK);
+//                    paint.setTextSize(24);
+//                    //canvas.drawText(genere.getName().toUpperCase(), currentX, currentY - 5, paint);
+//
+//                    // Pintar las 8 especies en línea horizontal
+//                    for (int especie = 1; especie <= 8; especie++) {
+//                        String imageName = genere.getName().toLowerCase() + especie;
+//                        int resId = getResources().getIdentifier(imageName, "drawable", getPackageName());
+//
+//                        if (resId != 0) {
+//                            Bitmap bmpCriatura = BitmapFactory.decodeResource(getResources(), resId);
+//                            Rect dst = new Rect(currentX, currentY, currentX + itemSize, currentY + itemSize);
+//
+//                            // Dibujar la criatura
+//                            Paint paintCriatura = new Paint();
+//                            if (!esCriaturaCapturada(genere, especie)) {
+//                                paintCriatura.setAlpha(128); // 50% transparencia si no está capturada
+//                            }
+//                            canvas.drawBitmap(bmpCriatura, null, dst, null);
+//
+//                            // Dibujar check si está capturada
+//                            if (esCriaturaCapturada(genere, especie)) {
+//                                Log.d("DIBUJAR_CHECK", "Dibujando check para: " + genere.getName() + especie);
+//
+//                                // Crear un Paint con transparencia para el check (opcional)
+//                                Paint checkPaint = new Paint();
+//                                checkPaint.setAlpha(180); // Semi-transparente
+//
+//                                canvas.drawBitmap(check, null, dst, null);
+//                            }
+//                        }
+//
+//                        currentX += itemSize + padding;
+//                    }
+//
+//                    currentY += itemSize + padding;
+//                }
+//
+//            } finally {
+//                if (canvas != null) {
+//                    svInventari.getHolder().unlockCanvasAndPost(canvas);
+//                }
+//            }
+//        }
+//    }
+//
+//    // Métodos auxiliares (igual que los tuyos)
+//    private Set<Genere> getGeneresUnics() {
+//        Set<Genere> generes = new HashSet<>();
+//        for (Criatura c : criaturesCapturades.keySet()) {
+//            generes.add(c.getGenere());
+//        }
+//        return generes;
+//    }
+
+    private boolean esCriaturaCapturada(Genere genere, int especie) {
+        for (Criatura c : criaturesCapturades.keySet()) {
+            if (c.getGenere().equals(genere) && c.getEspecie() == especie) {
+                return true;
+            }
+        }
+        return false;
+    }
     private void visibilizar(String conjunto){
         for (View view : mapaViews     ) view.setVisibility(View.INVISIBLE);
         for (View view : craituresViews) view.setVisibility(View.INVISIBLE);
@@ -372,6 +635,7 @@ public class MainActivity extends AppCompatActivity {
                 } else {
                     nomZona = "altre";
                 }
+                criatura.setZonaActualCataleg(nomZona);
 
                 if (catalegCriatures.containsKey(nomZona)) {
                     criaturesPerGenereEnZona = catalegCriatures.get(nomZona);
@@ -399,6 +663,13 @@ public class MainActivity extends AppCompatActivity {
 
 
     private void combat(Criatura criatura){
+
+        // La criatura no es visible
+        if (fe < zoomMaxim - (criatura.getGenere().getDistanciaDeteccio()+5)/5){
+            return;
+        }
+
+        // Ja hi ha un combat en marcha
         if (currentCombatDialog != null && currentCombatDialog.isShowing()) {
             return;
         }
@@ -412,6 +683,7 @@ public class MainActivity extends AppCompatActivity {
 
         TextView textResultat = dialog.findViewById(R.id.resultat);
         ImageView imgCriatura = dialog.findViewById(R.id.imageCriatura);
+        setCreatureImage(imgCriatura, criatura);
 
         Button botoPedra = dialog.findViewById(R.id.buttonPedra);
         Button botoPaper = dialog.findViewById(R.id.buttonPaper);
@@ -462,7 +734,9 @@ public class MainActivity extends AppCompatActivity {
                 }
                 CharSequence text = "Has capturat un " + criatura.getGenere().getName();
                 eliminarDelCataleg(criatura);
-                criaturesCapturades.put(criatura,findZone((int)criatura.getX(),(int)criatura.getY()));
+                Zona zonaCaptura = findZone((int)criatura.getX(), (int)criatura.getY());
+                mostrarInventari();
+                criaturesCapturades.put(criatura, zonaCaptura); // Guardas criatura + zona
                 textResultat.setText(text);
                 Toast toast = Toast.makeText(context,text,duration);
                 toast.show();
@@ -511,6 +785,17 @@ public class MainActivity extends AppCompatActivity {
         botoTisores.setOnClickListener(listener);
 
         dialog.show();
+    }
+    private void setCreatureImage(ImageView imageView, Criatura criatura) {
+        String genere = criatura.getGenere().getName().toLowerCase();
+        int especie = criatura.getEspecie();
+        String imageName = genere + especie;
+
+        int resId = getResources().getIdentifier(imageName, "drawable", getPackageName());
+
+        if (resId != 0) {
+            imageView.setImageResource(resId);
+        }
     }
 
     private void ferAnimacioEspera(View boto) {
@@ -589,8 +874,9 @@ public class MainActivity extends AppCompatActivity {
 
                             // Dibuixar la criatura només si és visible a la pantalla
                             if (screenX >= -criaturaSize && screenX <= amplaPantalla + criaturaSize &&
-                                    screenY >= -criaturaSize && screenY <= altPantalla + criaturaSize) {
-
+                                    screenY >= -criaturaSize && screenY <= altPantalla + criaturaSize
+                                && fe >= zoomMaxim - (criatura.getGenere().getDistanciaDeteccio()+5)/5) {
+                                hiHaCriatures = true;
                                 // Obtenir el color de la criatura segons el seu gènere
                                 int color = criatura.getGenere().getColorDetector();
                                 criaturaPaint.setColor(color);
@@ -767,29 +1053,144 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    // Substitueix el teu mètode criaturesEscapen existent per aquest:
     private void criaturesEscapen(float mapX, float mapY){
-        boolean canviDeZona = false;
-        // Iterar sobre totes les zones i tots els gèneres per trobar qualsevol criatura
+        List<MovementInfo> movementsToPerform = new ArrayList<>();
+
+        // Fase 1: Recollida. Obtenim totes les criatures en una llista temporal plana.
+        List<Criatura> allCriaturesCurrentlyInCatalog = new ArrayList<>();
         for (Map.Entry<String, Map<Genere, HashSet<Criatura>>> entryZona : catalegCriatures.entrySet()) {
             Map<Genere, HashSet<Criatura>> criaturesPerGenereEnZona = entryZona.getValue();
             if (criaturesPerGenereEnZona != null) {
                 for (Map.Entry<Genere, HashSet<Criatura>> entryGenere : criaturesPerGenereEnZona.entrySet()) {
-                    Iterator<Criatura> it = entryGenere.getValue().iterator();
-                    while (it.hasNext()) {
-                        Criatura criatura = it.next();
-                        float dx = criatura.getX() - mapX;
-                        float dy = criatura.getY() - mapY;
-                        float distance = (float) Math.sqrt(dx * dx + dy * dy);
+                    allCriaturesCurrentlyInCatalog.addAll(new ArrayList<>(entryGenere.getValue()));
+                }
+            }
+        }
 
-                        if (distance <= DISTANCIA_ESCAPE) {
-                            criatura.setX(criatura.getX()+dx*criatura.getGenere().getVelocitat()*10);
-                            criatura.setY(criatura.getY()+dy*criatura.getGenere().getVelocitat()*10);
+        for (Criatura criatura : allCriaturesCurrentlyInCatalog) {
+            if (criaturesEscapades.containsKey(criatura) || criaturesCapturades.containsKey(criatura)) {
+                continue;
+            }
+
+            float dx = criatura.getX() - mapX;
+            float dy = criatura.getY() - mapY;
+            float distance = (float) Math.sqrt(dx * dx + dy * dy);
+
+            if (distance <= DISTANCIA_ESCAPE) {
+                float newX = criatura.getX() + dx * criatura.getGenere().getVelocitat() * 10;
+                float newY = criatura.getY() + dy * criatura.getGenere().getVelocitat() * 10;
+
+                movementsToPerform.add(new MovementInfo(criatura, newX, newY));
+            }
+        }
+
+        // Fase 2: Aplicació. Apliquem els moviments.
+        for (MovementInfo movement : movementsToPerform) {
+            updateCreaturePositionAndCatalog(movement.getCriatura(), movement.getNewX(), movement.getNewY());
+        }
+
+        dibuixaMapa();
+    }
+
+    public void updateCreaturePositionAndCatalog(Criatura criatura, float newX, float newY) {
+        if (criatura == null) {
+            return;
+        }
+
+        String oldZoneName = criatura.getZonaActualCataleg();
+
+        criatura.setX(newX);
+        criatura.setY(newY);
+
+        Zona newZoneObject = findZone((int)newX, (int)newY);
+        String newZoneName = (newZoneObject != null) ? newZoneObject.getNomOficial() : "altre";
+
+
+        // Si les coordenades estan fora dels límits del mapa, la criatura s'escapa definitivament
+        if (newX < 0 || newX > bmp.getWidth() || newY < 0 || newY > bmp.getHeight()) {
+            if (!criaturesEscapades.containsKey(criatura)) {
+                if (oldZoneName != null) {
+                    Map<Genere, HashSet<Criatura>> criaturesPerGenereEnOldZone = catalegCriatures.get(oldZoneName);
+                    if (criaturesPerGenereEnOldZone != null) {
+                        HashSet<Criatura> llistaCriaturesDelGenere = criaturesPerGenereEnOldZone.get(criatura.getGenere());
+                        if (llistaCriaturesDelGenere != null) {
+                            llistaCriaturesDelGenere.remove(criatura);
+                            if (llistaCriaturesDelGenere.isEmpty()) {
+                                criaturesPerGenereEnOldZone.remove(criatura.getGenere());
+                                if (criaturesPerGenereEnOldZone.isEmpty()) {
+                                    catalegCriatures.remove(oldZoneName);
+                                }
+                            }
+                        }
+                    }
+                }
+                criaturesEscapades.put(criatura, new Zona("altre", "altre", -1, -1, -1, -1));
+                criatura.setZonaActualCataleg("escapada");
+                Log.d("CatalogUpdate", "Criatura " + criatura.getNom() + " (ID: " + criatura.getId() + ") s'ha escapat del mapa.");
+            }
+            return;
+        }
+
+        if (oldZoneName == null || !oldZoneName.equals(newZoneName)) {
+            if (oldZoneName != null) {
+                Map<Genere, HashSet<Criatura>> criaturesPerGenereEnOldZone = catalegCriatures.get(oldZoneName);
+                if (criaturesPerGenereEnOldZone != null) {
+                    HashSet<Criatura> llistaCriaturesDelGenere = criaturesPerGenereEnOldZone.get(criatura.getGenere());
+                    if (llistaCriaturesDelGenere != null) {
+                        boolean removed = llistaCriaturesDelGenere.remove(criatura);
+                        if (removed) {
+                            if (llistaCriaturesDelGenere.isEmpty()) {
+                                criaturesPerGenereEnOldZone.remove(criatura.getGenere());
+                                if (criaturesPerGenereEnOldZone.isEmpty()) {
+                                    catalegCriatures.remove(oldZoneName);
+                                }
+                            }
+                            Log.d("CatalogUpdate", "Criatura " + criatura.getNom() + " (ID: " + criatura.getId() + ") eliminada de la zona antiga '" + oldZoneName + "'.");
+                        } else {
+                            Log.w("CatalogUpdate", "No s'ha pogut eliminar la criatura " + criatura.getNom() + " (ID: " + criatura.getId() + ") de la zona antiga '" + oldZoneName + "'. Potser ja no hi era o la referència ha canviat?");
                         }
                     }
                 }
             }
+
+            criatura.setZonaActualCataleg(newZoneName);
+            catalegCriatures
+                    .computeIfAbsent(newZoneName, k -> new HashMap<>())
+                    .computeIfAbsent(criatura.getGenere(), k -> new HashSet<>())
+                    .add(criatura);
+
+            Log.d("CatalogUpdate", "Criatura " + criatura.getNom() + " (ID: " + criatura.getId() + ") moguda i actualitzada al catàleg de la zona: " + newZoneName);
+
+        } else {
+            Log.d("CatalogUpdate", "Criatura " + criatura.getNom() + " (ID: " + criatura.getId() + ") es va moure dins de la mateixa zona: " + newZoneName);
         }
     }
+
+    private static class MovementInfo {
+        private Criatura criatura;
+        private float newX;
+        private float newY;
+
+        public MovementInfo(Criatura criatura, float newX, float newY) {
+            this.criatura = criatura;
+            this.newX = newX;
+            this.newY = newY;
+        }
+
+        public Criatura getCriatura() {
+            return criatura;
+        }
+
+        public float getNewX() {
+            return newX;
+        }
+
+        public float getNewY() {
+            return newY;
+        }
+    }
+
 
     private Criatura cercarCriaturesProperes(float mapX, float mapY){
         // Iterar sobre totes les zones i tots els gèneres per trobar qualsevol criatura
@@ -875,6 +1276,11 @@ public class MainActivity extends AppCompatActivity {
         return json;
     }
 
+    public String miraZona(int x, int y){
+        Zona zona = findZone(x, y);
+        return zona.getNomPopular();
+    }
+
     public void crearEstructuresDeDadesDeZones (String contingutJSON){
         try {
             JSONObject arrel = new JSONObject(contingutJSON);
@@ -890,7 +1296,7 @@ public class MainActivity extends AppCompatActivity {
                 int x2 = zonaObj.getInt("x2");
                 int y2 = zonaObj.getInt("y2");
 
-                Zona z = new Zona(nomOficial, x1, y1, x2, y2);
+                Zona z = new Zona(nomPopular, nomOficial, x1, y1, x2, y2);
 
                 catalegZonesTrie.insert(nomPopular, z);
 
@@ -923,6 +1329,7 @@ public class MainActivity extends AppCompatActivity {
         return null;
     }
 
+
     private void iniciarTemporitzadorActualitzacioZona() {
         if (zoneUpdateTimer != null) {
             zoneUpdateTimer.cancel();
@@ -937,5 +1344,221 @@ public class MainActivity extends AppCompatActivity {
             public void onFinish() {
             }
         }.start();
+    }
+
+    //funciona bien hay que arreglar el formato
+    private void mostrarCriaturesPerZona() {
+        runOnUiThread(() -> {
+            try {
+                StringBuilder sb = new StringBuilder();
+                sb.append("<h2 style='color:#3F51B5;'>📊 CRIATURES PER ZONA</h2><br>");
+
+                if (catalegCriatures == null || catalegCriatures.isEmpty()) {
+                    sb.append("<i>No hi ha dades de criatures disponibles</i>");
+                    textCriatures.setText(Html.fromHtml(sb.toString()));
+                    return;
+                }
+
+                // 1. Ordenar zonas alfabéticamente
+                TreeMap<String, Map<Genere, HashSet<Criatura>>> zonesOrdenades = new TreeMap<>(catalegCriatures);
+
+                // Contador total global
+                int totalGlobal = 0;
+
+                for (Map.Entry<String, Map<Genere, HashSet<Criatura>>> entryZona : zonesOrdenades.entrySet()) {
+                    String nomZona = entryZona.getKey();
+                    Map<Genere, HashSet<Criatura>> criaturesPerGenere = entryZona.getValue();
+
+                    // Cabecera de zona con contador
+                    int totalZona = 0;
+                    sb.append("<p style='margin-bottom:5px;'><b><font color='#0066CC'>")
+                            .append(nomZona)
+                            .append("</font>");
+
+                    // 2. Ordenar géneros alfabéticamente
+                    TreeMap<String, Genere> generesOrdenats = new TreeMap<>();
+                    for (Genere g : criaturesPerGenere.keySet()) {
+                        generesOrdenats.put(g.getName(), g);
+                    }
+
+                    // Pre-calcular totales por zona
+                    for (Genere g : generesOrdenats.values()) {
+                        totalZona += criaturesPerGenere.get(g).size();
+                    }
+                    totalGlobal += totalZona;
+
+                    sb.append(" (").append(totalZona).append(")</b></p>");
+
+                    // Detalle por género
+                    if (!criaturesPerGenere.isEmpty()) {
+                        sb.append("<div style='margin-left:15px;'>");
+                        for (Map.Entry<String, Genere> entryGenere : generesOrdenats.entrySet()) {
+                            Genere genere = entryGenere.getValue();
+                            int quantitat = criaturesPerGenere.get(genere).size();
+
+                            sb.append("• <font color='")
+                                    .append(String.format("#%06X", (0xFFFFFF & genere.getColorDetector())))
+                                    .append("'>").append(genere.getName())
+                                    //.append("</font>: ")
+                                    .append(quantitat)
+                                    .append("<br>");
+                        }
+                        sb.append("</div>");
+                    }
+                    sb.append("<br>");
+                }
+
+                // Footer con total general
+                sb.append("<hr><p><b>Total criatures: ").append(totalGlobal).append("</b></p>");
+
+                textCriatures.setText(Html.fromHtml(sb.toString()));
+                textCriatures.setMovementMethod(new ScrollingMovementMethod());
+
+            } catch (Exception e) {
+                Log.e("ERROR", "Excepción en mostrarCriaturesPerZona: " + e.getMessage(), e);
+                textCriatures.setText("Error al mostrar les dades. Revisa Logcat.");
+            }
+        });
+    }
+
+    private int contarCriatures(UnsortedLinkedListSet<Criatura> criatures) {
+        int count = 0;
+        if (criatures != null) {
+            for (Criatura c : criatures) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private void mostrarZonesDelMapa() {
+        runOnUiThread(() -> {
+            try {
+                StringBuilder sb = new StringBuilder();
+                sb.append("<h2 style='color:#3F51B5;'>🗺 ZONES DEL MAPA</h2><br>");
+
+                if (catalegZonesMapa == null || catalegZonesMapa.isEmpty()) {
+                    sb.append("<i>No hi ha zones definides al mapa</i>");
+                    textCriatures.setText(Html.fromHtml(sb.toString()));
+                    return;
+                }
+
+                // 1. Ordenar zonas alfabéticamente
+                TreeMap<String, Zona> zonesOrdenades = new TreeMap<>(catalegZonesMapa);
+
+                for (Map.Entry<String, Zona> entry : zonesOrdenades.entrySet()) {
+                    Zona zona = entry.getValue();
+                    int amplada = zona.getX2() - zona.getX1();
+                    int altura = zona.getY2() - zona.getY1();
+
+                    // Cabecera de zona con dimensiones
+                    sb.append("<p style='margin-bottom:5px;'><b><font color='#0066CC'>")
+                            .append(zona.getNomOficial())
+                           // .append("</font> (")
+                            .append(amplada).append("x").append(altura).append("px)</b></p>");
+
+                    // Detalle de coordenadas
+//                    sb.append("<div style='margin-left:15px;'>")
+//                            .append("• X: ").append(zona.getX1()).append(" → ").append(zona.getX2()).append("<br>")
+//                            .append("• Y: ").append(zona.getY1()).append(" → ").append(zona.getY2()).append("<br>")
+//                            .append("</div><br>");
+                }
+
+                // Footer con total
+                sb.append("<hr><p><b>Total zones: ").append(zonesOrdenades.size()).append("</b></p>");
+
+                textCriatures.setText(Html.fromHtml(sb.toString()));
+                textCriatures.setMovementMethod(new ScrollingMovementMethod());
+
+            } catch (Exception e) {
+                Log.e("ERROR", "Excepció en mostrarZonesDelMapa: " + e.getMessage(), e);
+                textCriatures.setText("Error al mostrar les zones. Revisa Logcat.");
+            }
+        });
+    }
+
+    //funciona bien hay que arreglar el formato
+    private void mostrarCriaturesCapturades() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("<h2>Criatures Capturades</h2><br>");
+
+        if (criaturesCapturades.isEmpty()) {
+            sb.append("Encara no has capturat cap criatura.<br>");
+        } else {
+            // Usamos TreeMap para ordenar alfabéticamente por nombre de criatura
+            TreeMap<String, Map.Entry<Criatura, Zona>> criaturesOrdenades = new TreeMap<>();
+
+            for (Map.Entry<Criatura, Zona> entry : criaturesCapturades.entrySet()) {
+                criaturesOrdenades.put(entry.getKey().getNom(), entry);
+            }
+
+            for (Map.Entry<String, Map.Entry<Criatura, Zona>> entry : criaturesOrdenades.entrySet()) {
+                Criatura c = entry.getValue().getKey();
+                Zona z = entry.getValue().getValue();
+
+                sb.append("<font color='")
+                        .append(String.format("#%06X", (0xFFFFFF & c.getGenere().getColorDetector())))
+                        .append("'><b>")
+                        .append(c.getGenere().getName())  // Ej: "tornadrac"
+                        .append(" ")
+                        .append(c.getEspecie())          // Ej: "3"
+                        //.append("</b></font><br>")
+                       // .append("&nbsp;&nbsp;• Zona: <i>")
+                        .append( z.getNomOficial())
+                        .append("</i><br>")
+                        .append("&nbsp;&nbsp;• Coord: [")
+                        .append((int)c.getX())
+                        .append(", ")
+                        .append((int)c.getY())
+                        .append("]<br><br>");
+            }
+        }
+
+        // Asegúrate de que el TextView tiene el movimiento habilitado
+        textCriatures.setMovementMethod(new ScrollingMovementMethod());
+        textCriatures.setText(Html.fromHtml(sb.toString()));
+        textCriatures.scrollTo(0, 0);
+    }
+    private void mostrarCriaturesEscapades() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("<h2 style='color:#FF5722;'>Criatures Escapades</h2><br>");
+
+        if (criaturesEscapades.isEmpty()) {
+            sb.append("<i>No s'ha escapat cap criatura.</i><br>");
+        } else {
+            // Usamos TreeMap para ordenar igual que en capturadas
+            TreeMap<String, Map.Entry<Criatura, Zona>> criaturesOrdenades = new TreeMap<>();
+
+            for (Map.Entry<Criatura, Zona> entry : criaturesEscapades.entrySet()) {
+                criaturesOrdenades.put(entry.getKey().getNom(), entry);
+            }
+
+            for (Map.Entry<String, Map.Entry<Criatura, Zona>> entry : criaturesOrdenades.entrySet()) {
+                Criatura c = entry.getValue().getKey();
+                Zona z = entry.getValue().getValue();
+
+                sb.append("<p style='margin-bottom:15px;'>")
+                        .append("<b><font color='")
+                        .append(String.format("#%06X", (0xFFFFFF & c.getGenere().getColorDetector())))
+                        .append("'>")
+                        .append(c.getGenere().getName())  // Ej: "tornadrac"
+                        .append(" ")
+                        .append(c.getEspecie())          // Ej: "3"
+                       // .append("</font></b><br>")
+                       // .append("&nbsp;&nbsp;• Zona: <i>")
+                        .append(z.getNomOficial())
+                        .append("</i><br>")
+                        .append("&nbsp;&nbsp;• Coord: [")
+                        .append((int)c.getX())
+                        .append(", ")
+                        .append((int)c.getY())
+                        .append("]<br>")
+                        .append("&nbsp;&nbsp;• Estat: <font color='#FF0000'>ESCAPADA</font></p>");
+            }
+        }
+
+        textCriatures.setMovementMethod(new ScrollingMovementMethod());
+        textCriatures.setText(Html.fromHtml(sb.toString(), Html.FROM_HTML_MODE_LEGACY));
+        textCriatures.scrollTo(0, 0);
     }
 }

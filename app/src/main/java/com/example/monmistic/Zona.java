@@ -3,10 +3,12 @@ package com.example.monmistic;
 import android.util.Log;
 
 public class Zona {
+    String nomPopular;
     private String nomOficial;
     private int x1, y1, x2, y2;
 
-    public Zona(String nomOficial, int x1, int y1, int x2, int y2) {
+    public Zona(String nomPopular, String nomOficial, int x1, int y1, int x2, int y2) {
+        this.nomPopular = nomPopular;
         this.nomOficial = nomOficial;
         this.x1 = x1;
         this.y1 = y1;
@@ -30,6 +32,10 @@ public class Zona {
         return x1;
     }
 
+    public String getNomPopular() {
+        Log.d("getNomPopular", "Zona x1: " + x1 + " x2: " + x2 + " y1: " + y1 + " y2: " +y2);
+        return nomPopular;
+    }
     public String getNomOficial() {
         Log.d("getNomOficial", "Zona x1: " + x1 + " x2: " + x2 + " y1: " + y1 + " y2: " +y2);
         return nomOficial;
