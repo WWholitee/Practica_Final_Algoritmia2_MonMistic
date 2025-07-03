@@ -5,9 +5,13 @@
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:layout_margin="0px"
+    android:layout_marginTop="0px"
+    android:layout_marginEnd="0px"
     android:background="@drawable/monmistic"
     android:foregroundTint="#00FFFFFF"
     app:layout_constraintDimensionRatio="1:1"
+    app:layout_marginBaseline="0px"
     tools:context=".MainActivity">
 
     <androidx.constraintlayout.widget.Guideline
@@ -268,7 +272,7 @@
         android:layout_width="63dp"
         android:layout_height="23dp"
         android:layout_marginEnd="10dp"
-        android:text="PUNTOS"
+        android:text="0 punts"
         android:textColor="#FFFFFF"
         android:textSize="14sp"
         android:visibility="invisible"

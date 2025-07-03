@@ -738,6 +738,8 @@ public class MainActivity extends AppCompatActivity {
                 mostrarInventari();
                 criaturesCapturades.put(criatura, zonaCaptura); // Guardas criatura + zona
                 textResultat.setText(text);
+                puntos += criatura.getGenere().getPuntsCompensacio();
+                textViewPuntos.setText(puntos + " punts");
                 Toast toast = Toast.makeText(context,text,duration);
                 toast.show();
             } else {
@@ -1351,8 +1353,6 @@ public class MainActivity extends AppCompatActivity {
         runOnUiThread(() -> {
             try {
                 StringBuilder sb = new StringBuilder();
-                sb.append("<h2 style='color:#3F51B5;'>📊 CRIATURES PER ZONA</h2><br>");
-
                 if (catalegCriatures == null || catalegCriatures.isEmpty()) {
                     sb.append("<i>No hi ha dades de criatures disponibles</i>");
                     textCriatures.setText(Html.fromHtml(sb.toString()));
@@ -1362,32 +1362,22 @@ public class MainActivity extends AppCompatActivity {
                 // 1. Ordenar zonas alfabéticamente
                 TreeMap<String, Map<Genere, HashSet<Criatura>>> zonesOrdenades = new TreeMap<>(catalegCriatures);
 
-                // Contador total global
-                int totalGlobal = 0;
 
                 for (Map.Entry<String, Map<Genere, HashSet<Criatura>>> entryZona : zonesOrdenades.entrySet()) {
                     String nomZona = entryZona.getKey();
                     Map<Genere, HashSet<Criatura>> criaturesPerGenere = entryZona.getValue();
 
-                    // Cabecera de zona con contador
-                    int totalZona = 0;
-                    sb.append("<p style='margin-bottom:5px;'><b><font color='#0066CC'>")
+                    sb.append("<p style='margin-bottom:5px;'><b><font color='#333333'>")
+                            .append("A la zona ")
                             .append(nomZona)
-                            .append("</font>");
+                            .append(" hi ha:")
+                            .append("</font></b></p>");
 
                     // 2. Ordenar géneros alfabéticamente
                     TreeMap<String, Genere> generesOrdenats = new TreeMap<>();
                     for (Genere g : criaturesPerGenere.keySet()) {
                         generesOrdenats.put(g.getName(), g);
                     }
-
-                    // Pre-calcular totales por zona
-                    for (Genere g : generesOrdenats.values()) {
-                        totalZona += criaturesPerGenere.get(g).size();
-                    }
-                    totalGlobal += totalZona;
-
-                    sb.append(" (").append(totalZona).append(")</b></p>");
 
                     // Detalle por género
                     if (!criaturesPerGenere.isEmpty()) {
@@ -1396,20 +1386,24 @@ public class MainActivity extends AppCompatActivity {
                             Genere genere = entryGenere.getValue();
                             int quantitat = criaturesPerGenere.get(genere).size();
 
-                            sb.append("• <font color='")
-                                    .append(String.format("#%06X", (0xFFFFFF & genere.getColorDetector())))
-                                    .append("'>").append(genere.getName())
-                                    //.append("</font>: ")
+                            // Valor
+                            sb.append(" <font color='")
+                                    .append(String.format("#%06X", (0xFFFFFF & Color.BLACK)))
+                                    .append("'>")
+                                    .append("\t\t\t")
                                     .append(quantitat)
+                                    .append("</font>");
+
+                            // Genere
+                            sb.append(" <font color='")
+                                    .append(String.format("#%06X", (0xFFFFFF & genere.getColorDetector())))
+                                    .append("'>").append(genere.getName()).append("</font>")
                                     .append("<br>");
                         }
                         sb.append("</div>");
                     }
-                    sb.append("<br>");
                 }
 
-                // Footer con total general
-                sb.append("<hr><p><b>Total criatures: ").append(totalGlobal).append("</b></p>");
 
                 textCriatures.setText(Html.fromHtml(sb.toString()));
                 textCriatures.setMovementMethod(new ScrollingMovementMethod());
@@ -1421,21 +1415,11 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private int contarCriatures(UnsortedLinkedListSet<Criatura> criatures) {
-        int count = 0;
-        if (criatures != null) {
-            for (Criatura c : criatures) {
-                count++;
-            }
-        }
-        return count;
-    }
-
     private void mostrarZonesDelMapa() {
         runOnUiThread(() -> {
             try {
                 StringBuilder sb = new StringBuilder();
-                sb.append("<h2 style='color:#3F51B5;'>🗺 ZONES DEL MAPA</h2><br>");
+                sb.append("<p style='font-size:18px; font-weight:bold; color:#000000;'> <b> ZONES DEL MAPA </b> </p>");
 
                 if (catalegZonesMapa == null || catalegZonesMapa.isEmpty()) {
                     sb.append("<i>No hi ha zones definides al mapa</i>");
@@ -1448,24 +1432,17 @@ public class MainActivity extends AppCompatActivity {
 
                 for (Map.Entry<String, Zona> entry : zonesOrdenades.entrySet()) {
                     Zona zona = entry.getValue();
-                    int amplada = zona.getX2() - zona.getX1();
-                    int altura = zona.getY2() - zona.getY1();
 
                     // Cabecera de zona con dimensiones
-                    sb.append("<p style='margin-bottom:5px;'><b><font color='#0066CC'>")
-                            .append(zona.getNomOficial())
-                           // .append("</font> (")
-                            .append(amplada).append("x").append(altura).append("px)</b></p>");
+                    sb.append("<p style='margin-bottom:0px;'><font color='#999999'>")
+                            .append("\t\t\t")
+                            .append(zona.getNomPopular())
+                            .append(": (").append(zona.getX1()).append(":").append(zona.getX2())
+                            .append(") (").append(zona.getY1()).append(":").append(zona.getY2())
+                            .append(")</p>");
 
-                    // Detalle de coordenadas
-//                    sb.append("<div style='margin-left:15px;'>")
-//                            .append("• X: ").append(zona.getX1()).append(" → ").append(zona.getX2()).append("<br>")
-//                            .append("• Y: ").append(zona.getY1()).append(" → ").append(zona.getY2()).append("<br>")
-//                            .append("</div><br>");
                 }
 
-                // Footer con total
-                sb.append("<hr><p><b>Total zones: ").append(zonesOrdenades.size()).append("</b></p>");
 
                 textCriatures.setText(Html.fromHtml(sb.toString()));
                 textCriatures.setMovementMethod(new ScrollingMovementMethod());
@@ -1510,7 +1487,7 @@ public class MainActivity extends AppCompatActivity {
                         .append((int)c.getX())
                         .append(", ")
                         .append((int)c.getY())
-                        .append("]<br><br>");
+                        .append("]<br>");
             }
         }
 
