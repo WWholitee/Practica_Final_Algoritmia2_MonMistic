@@ -284,8 +284,7 @@
         android:id="@+id/radioGroupCriatures"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:layout_marginEnd="48dp"
+        android:layout_marginEnd="44dp"
         android:orientation="vertical"
         app:layout_constraintEnd_toStartOf="@+id/guideline3"
         app:layout_constraintTop_toTopOf="@+id/guideline">
@@ -293,7 +292,7 @@
         <RadioButton
             android:id="@+id/radioButtonCriaturesZona"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_height="40dp"
             android:layout_marginEnd="80dp"
             android:text="Criatures per zona"
             android:visibility="invisible" />
@@ -301,21 +300,21 @@
         <RadioButton
             android:id="@+id/radioButtonZonesMapa"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_height="40dp"
             android:text="Zones del mapa"
             android:visibility="invisible" />
 
         <RadioButton
             android:id="@+id/radioButtonCapturades"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_height="40dp"
             android:text="Criatures capturades"
             android:visibility="invisible" />
 
         <RadioButton
             android:id="@+id/radioButtonEscapades"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_height="40dp"
             android:layout_marginBottom="10dp"
             android:text="Criatures escapades"
             android:visibility="invisible" />
