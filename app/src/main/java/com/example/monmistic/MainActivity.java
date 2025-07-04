@@ -209,8 +209,8 @@ public class MainActivity extends AppCompatActivity {
         scaleDetector = new ScaleGestureDetector(this,new ScaleListener());
 
         suggestionsAdapter = new ArrayAdapter<>(this,
-                android.R.layout.simple_list_item_1, // Layout estàndard per a cada element de la llista
-                new ArrayList<>()); // Llista de suggeriments inicialment buida
+                android.R.layout.simple_list_item_1,
+                new ArrayList<>());
         suggestionsListView.setAdapter(suggestionsAdapter);
 
         editTextCercaZona.addTextChangedListener(new TextWatcher() {
@@ -267,6 +267,8 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+
+    //BOTON MAPA ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////7
     public void inicializarConjuntoMapa() {
         SurfaceView sv = findViewById(R.id.surfaceView);
         textViewNomZona = findViewById(R.id.NomZONA);
@@ -289,6 +291,8 @@ public class MainActivity extends AppCompatActivity {
         mapaViews.add(Bmenos1);
         mapaViews.add(Bmas2);
         mapaViews.add(Bmenos2);
+
+        ////BOTONES DE ZOOM
 
         Bmenos2.setOnClickListener(v -> {
             ferZoomOut();
@@ -382,6 +386,8 @@ public class MainActivity extends AppCompatActivity {
         // Amaga també la llista de suggeriments després de la cerca o quan el teclat s'amaga
         suggestionsListView.setVisibility(View.GONE);
     }
+
+    //BOTON CRIATURAS/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     public void inicializarConjuntoCriaturas(){
         SurfaceView sv2 = findViewById(R.id.surfaceView2);
         textCriatures = findViewById(R.id.textCriaturas);
@@ -400,6 +406,8 @@ public class MainActivity extends AppCompatActivity {
         craituresViews.add(rbCapturades);
         craituresViews.add(rbEscapades);
 
+
+        //Radio button//////////////////////////////////////////////////////
         View.OnClickListener radioButtonClickListener = v -> {
             RadioButton clickedRadioButton = (RadioButton) v;
 
@@ -426,15 +434,15 @@ public class MainActivity extends AppCompatActivity {
             }
         };
 
-        // Asignar el listener a cada RadioButton
+
         rbCriaturesZona.setOnClickListener(radioButtonClickListener);
         rbZonesMapa.setOnClickListener(radioButtonClickListener);
         rbCapturades.setOnClickListener(radioButtonClickListener);
         rbEscapades.setOnClickListener(radioButtonClickListener);
 
-        // Listener para detectar cambios automáticos (por si acaso)
+
         radioGroup.setOnCheckedChangeListener((group, checkedId) -> {
-            // Este listener se mantiene pero no es estrictamente necesario
+
         });
 
 
@@ -442,7 +450,7 @@ public class MainActivity extends AppCompatActivity {
         // Habilitar scrolling en el TextView
         textCriatures.setMovementMethod(new ScrollingMovementMethod());
     }
-
+    //BOTON INVENTARIO//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     public void inicializarConjuntoInventario(){
         SurfaceView svInventari = findViewById(R.id.surfaceView3); // Cambiado a svInventari para claridad
 
@@ -495,21 +503,21 @@ public class MainActivity extends AppCompatActivity {
                 for (Map.Entry<String, Genere> entry : generesOrdenats.entrySet()) {
                     Genere genere = entry.getValue();
 
-                    // Título del género
+                    // TITULO
                     Paint paint = new Paint();
                     paint.setColor(Color.BLACK);
                     paint.setTextSize(30);
                     canvas.drawText(genere.getName().toUpperCase(), currentX, currentY - 5, paint);
                     currentY += 35;
 
-                    // Pintar especies (1-8)
+                    // PINTAR ESPECIES
                     for (int especie = 1; especie <= 8; especie++) {
                         if (currentX + itemSize > svInventari.getWidth()) {
                             currentX = padding;
                             currentY += itemSize + padding;
                         }
 
-                        // Obtener imagen de la criatura
+                        // IMAGEN
                         String imageName = genere.getName().toLowerCase() + especie;
                         int resId = getResources().getIdentifier(imageName, "drawable", getPackageName());
 
@@ -518,7 +526,7 @@ public class MainActivity extends AppCompatActivity {
                             Rect dst = new Rect(currentX, currentY, currentX + itemSize, currentY + itemSize);
                             canvas.drawBitmap(bmpCriatura, null, dst, null);
 
-                            // Superponer check si está capturada
+                            // CHECK SI TOCA
                             if (esCriaturaCapturada(genere, especie)) {
                                 Rect checkDst = new Rect(
                                         currentX + itemSize - 40,
@@ -544,7 +552,6 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    // Métodos auxiliares
     private Set<Genere> getGeneresUnics() {
         Set<Genere> generes = new HashSet<>();
 
@@ -556,100 +563,8 @@ public class MainActivity extends AppCompatActivity {
 
         return generes;
     }
-//    private void mostrarInventari() {
-//        SurfaceView svInventari = findViewById(R.id.surfaceView3);
 //
-//        if (svInventari.getHolder().getSurface().isValid()) {
-//            Canvas canvas = svInventari.getHolder().lockCanvas();
-//            try {
-//                // Limpiar el canvas
-//                canvas.drawColor(Color.WHITE);
-//
-//                // Configuración de dimensiones
-//                int padding = 20;
-//                int screenWidth = svInventari.getWidth();
-//                int screenHeight = svInventari.getHeight();
-//
-//                // Calcular tamaño de imágenes para que quepan 8 por fila
-//                int itemSize = (screenWidth - (padding * 9)) / 8; // 8 imágenes + márgenes
-//                itemSize = Math.min(itemSize, (screenHeight - padding * 5) / 4); // Ajustar por altura
-//
-//                // Precargar el check
-//                Bitmap check = BitmapFactory.decodeResource(getResources(), R.drawable.check);
-//                check = Bitmap.createScaledBitmap(check, itemSize, itemSize, true);
-//
-//                // Coordenadas iniciales
-//                int currentY = padding;
-//
-//                // Lista ordenada de géneros
-//                Genere[] generes = {
-//                        new Genere("aiguard", 0.01f, Color.MAGENTA, 10, 0),
-//                        new Genere("focguard", 0.015f, Color.GREEN, 15, 1),
-//                        new Genere("tornadrac", 0.02f, Color.RED, 20, 2.5f),
-//                        new Genere("vapordrac", 0.025f, Color.BLUE, 30, 3.5f)
-//                };
-//
-//                // Pintar cada género en su fila
-//                for (Genere genere : generes) {
-//                    int currentX = padding;
-//
-//                    // Título del género
-//                    Paint paint = new Paint();
-//                    paint.setColor(Color.BLACK);
-//                    paint.setTextSize(24);
-//                    //canvas.drawText(genere.getName().toUpperCase(), currentX, currentY - 5, paint);
-//
-//                    // Pintar las 8 especies en línea horizontal
-//                    for (int especie = 1; especie <= 8; especie++) {
-//                        String imageName = genere.getName().toLowerCase() + especie;
-//                        int resId = getResources().getIdentifier(imageName, "drawable", getPackageName());
-//
-//                        if (resId != 0) {
-//                            Bitmap bmpCriatura = BitmapFactory.decodeResource(getResources(), resId);
-//                            Rect dst = new Rect(currentX, currentY, currentX + itemSize, currentY + itemSize);
-//
-//                            // Dibujar la criatura
-//                            Paint paintCriatura = new Paint();
-//                            if (!esCriaturaCapturada(genere, especie)) {
-//                                paintCriatura.setAlpha(128); // 50% transparencia si no está capturada
-//                            }
-//                            canvas.drawBitmap(bmpCriatura, null, dst, null);
-//
-//                            // Dibujar check si está capturada
-//                            if (esCriaturaCapturada(genere, especie)) {
-//                                Log.d("DIBUJAR_CHECK", "Dibujando check para: " + genere.getName() + especie);
-//
-//                                // Crear un Paint con transparencia para el check (opcional)
-//                                Paint checkPaint = new Paint();
-//                                checkPaint.setAlpha(180); // Semi-transparente
-//
-//                                canvas.drawBitmap(check, null, dst, null);
-//                            }
-//                        }
-//
-//                        currentX += itemSize + padding;
-//                    }
-//
-//                    currentY += itemSize + padding;
-//                }
-//
-//            } finally {
-//                if (canvas != null) {
-//                    svInventari.getHolder().unlockCanvasAndPost(canvas);
-//                }
-//            }
-//        }
-//    }
-//
-//    // Métodos auxiliares (igual que los tuyos)
-//    private Set<Genere> getGeneresUnics() {
-//        Set<Genere> generes = new HashSet<>();
-//        for (Criatura c : criaturesCapturades.keySet()) {
-//            generes.add(c.getGenere());
-//        }
-//        return generes;
-//    }
-
+    //FUNCION PARA SABER SI UNA CRIATURA HA SIDO CAPTURADA
     private boolean esCriaturaCapturada(Genere genere, int especie) {
         for (Criatura c : criaturesCapturades.keySet()) {
             if (c.getGenere().equals(genere) && c.getEspecie() == especie) {
@@ -658,6 +573,7 @@ public class MainActivity extends AppCompatActivity {
         }
         return false;
     }
+
     private void visibilizar(String conjunto){
         for (View view : mapaViews     ) view.setVisibility(View.INVISIBLE);
         for (View view : craituresViews) view.setVisibility(View.INVISIBLE);
@@ -922,7 +838,7 @@ public class MainActivity extends AppCompatActivity {
             Canvas canvas = SV.getHolder().lockCanvas();
             canvas.drawColor(Color.BLACK); // Fons negre
 
-            // Dibuixem la imatge ocupant tot el SurfaceView
+
             Rect src = new Rect(0, 0, bmp.getWidth(), bmp.getHeight());
             Rect dst = new Rect(0, 0, ampla, alt);
             canvas.drawBitmap(bmp, src, dst, new Paint());
@@ -1012,20 +928,20 @@ public class MainActivity extends AppCompatActivity {
                 canvas.drawCircle(centerX, centerY, radius, circlePaint);
             } else {
                 Paint crosshairPaint = new Paint();
-                crosshairPaint.setColor(Color.WHITE); // Color of the crosshair
-                crosshairPaint.setStrokeWidth(5); // Thickness of the crosshair lines
+                crosshairPaint.setColor(Color.WHITE);
+                crosshairPaint.setStrokeWidth(5);
 
-                // Calculate the center of the SurfaceView
+
                 float centerX = amplaPantalla / 2f;
                 float centerY = altPantalla / 2f;
 
-                // Define the length of the crosshair arms
-                float armLength = 30; // Adjust this value to make the crosshair larger or smaller
 
-                // Draw horizontal line of the crosshair
+                float armLength = 30;
+
+
                 canvas.drawLine(centerX - armLength, centerY, centerX + armLength, centerY, crosshairPaint);
 
-                // Draw vertical line of the crosshair
+
                 canvas.drawLine(centerX, centerY - armLength, centerX, centerY + armLength, crosshairPaint);
             }
 
@@ -1560,7 +1476,7 @@ public class MainActivity extends AppCompatActivity {
     //funciona bien hay que arreglar el formato
     private void mostrarCriaturesCapturades() {
         StringBuilder sb = new StringBuilder();
-        sb.append("<h2>Criatures Capturades</h2><br>");
+        sb.append("<p style='font-size:18px; font-weight:bold; color:#000000;'> <b> CRIATURES CAPTURADES </b> </p>");
 
         if (criaturesCapturades.isEmpty()) {
             sb.append("Encara no has capturat cap criatura.<br>");
@@ -1576,15 +1492,16 @@ public class MainActivity extends AppCompatActivity {
                 Criatura c = entry.getValue().getKey();
                 Zona z = entry.getValue().getValue();
 
-                sb.append("<font color='")
-                        .append(String.format("#%06X", (0xFFFFFF & c.getGenere().getColorDetector())))
-                        .append("'><b>")
+
+                sb.append("<p style='margin-bottom:0px;'><font color='#000000'>")
+
                         .append(c.getGenere().getName())  // Ej: "tornadrac"
-                        .append(" ")
+                        .append("  ")
                         .append(c.getEspecie())          // Ej: "3"
-                        //.append("</b></font><br>")
-                       // .append("&nbsp;&nbsp;• Zona: <i>")
+
+                        .append("  ")
                         .append( z.getNomOficial())
+                        .append("\t\t\t")
                         .append("</i><br>")
                         .append("&nbsp;&nbsp;• Coord: [")
                         .append((int)c.getX())
@@ -1601,7 +1518,7 @@ public class MainActivity extends AppCompatActivity {
     }
     private void mostrarCriaturesEscapades() {
         StringBuilder sb = new StringBuilder();
-        sb.append("<h2 style='color:#FF5722;'>Criatures Escapades</h2><br>");
+        sb.append("<p style='font-size:18px; font-weight:bold; color:#000000;'> <b> CRIATURES ESCAPADES </b> </p>");
 
         if (criaturesEscapades.isEmpty()) {
             sb.append("<i>No s'ha escapat cap criatura.</i><br>");
@@ -1617,16 +1534,16 @@ public class MainActivity extends AppCompatActivity {
                 Criatura c = entry.getValue().getKey();
                 Zona z = entry.getValue().getValue();
 
-                sb.append("<p style='margin-bottom:15px;'>")
-                        .append("<b><font color='")
-                        .append(String.format("#%06X", (0xFFFFFF & c.getGenere().getColorDetector())))
-                        .append("'>")
+                sb.append("<p style='margin-bottom:0px;'><font color='#000000'>")
+
                         .append(c.getGenere().getName())  // Ej: "tornadrac"
-                        .append(" ")
+                        .append("   ")
                         .append(c.getEspecie())          // Ej: "3"
-                       // .append("</font></b><br>")
-                       // .append("&nbsp;&nbsp;• Zona: <i>")
+
+                        .append("  ")
                         .append(z.getNomOficial())
+                        .append("  ")
+                        .append("\t\t\t")
                         .append("</i><br>")
                         .append("&nbsp;&nbsp;• Coord: [")
                         .append((int)c.getX())
