@@ -16,7 +16,9 @@ import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.os.CountDownTimer;
 import android.os.Handler;
+import android.text.Editable;
 import android.text.Html;
+import android.text.TextWatcher;
 import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
 import android.view.MotionEvent;
@@ -26,8 +28,10 @@ import android.view.SurfaceView;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.LinearInterpolator;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.ListView;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.TextView;
@@ -66,6 +70,9 @@ public class MainActivity extends AppCompatActivity {
     private TextView textCriatures;
     private int puntos;
     private EditText editTextCercaZona;
+    private ArrayAdapter<String> suggestionsAdapter;
+    private ListView suggestionsListView;
+
     private TextView textViewZoom;
     private SurfaceView SV, SV2;
 
@@ -198,10 +205,69 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        suggestionsListView = findViewById(R.id.ListView);
         scaleDetector = new ScaleGestureDetector(this,new ScaleListener());
+
+        suggestionsAdapter = new ArrayAdapter<>(this,
+                android.R.layout.simple_list_item_1, // Layout estàndard per a cada element de la llista
+                new ArrayList<>()); // Llista de suggeriments inicialment buida
+        suggestionsListView.setAdapter(suggestionsAdapter);
+
+        editTextCercaZona.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                String prefix = s.toString();
+                if (prefix.isEmpty()) {
+                    suggestionsAdapter.clear();
+                    suggestionsListView.setVisibility(View.GONE); // Amagar la llista si el text està buit
+                    return;
+                }
+
+                // Obté els suggeriments del Trie basats en el prefix actual
+                List<Zona> suggestedZones = catalegZonesTrie.getSuggestions(prefix);
+                List<String> suggestedNames = new ArrayList<>();
+                for (Zona zona : suggestedZones) {
+                    // Afegeix el nom de la zona que vols que es mostri a la llista de suggeriments
+                    suggestedNames.add(zona.getNomPopular()); // O zona.getNomOficial() si és el que uses
+                }
+
+                // Actualitza l'adaptador del ListView amb els nous suggeriments
+                suggestionsAdapter.clear();
+                suggestionsAdapter.addAll(suggestedNames);
+                suggestionsAdapter.notifyDataSetChanged(); // Notifica els canvis a l'adaptador
+
+                // Mostra la llista de suggeriments si n'hi ha, altrament, amaga-la
+                if (!suggestedNames.isEmpty()) {
+                    suggestionsListView.setVisibility(View.VISIBLE);
+                } else {
+                    suggestionsListView.setVisibility(View.GONE);
+                }
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+            }
+        });
+
+        suggestionsListView.setOnItemClickListener((parent, view, position, id) -> {
+            String selectedZoneName = (String) parent.getItemAtPosition(position);
+            editTextCercaZona.setText(selectedZoneName); // Omple l'EditText amb el suggeriment seleccionat
+            // Posa el cursor al final del text, per si l'usuari vol seguir editant
+            editTextCercaZona.setSelection(editTextCercaZona.getText().length());
+
+            // Amaga la llista de suggeriments un cop s'ha seleccionat un
+            suggestionsListView.setVisibility(View.GONE);
+
+            // Després de seleccionar un suggeriment, pots voler activar la lògica de cerca immediatament
+            performZoneSearch(selectedZoneName); // Crida el mètode que conté la lògica de cerca
+        });
     }
 
-    public void inicializarConjuntoMapa(){
+    public void inicializarConjuntoMapa() {
         SurfaceView sv = findViewById(R.id.surfaceView);
         textViewNomZona = findViewById(R.id.NomZONA);
         textViewPuntos = findViewById(R.id.Puntos);
@@ -279,6 +345,43 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    private void performZoneSearch(String nomBuscado) {
+        Zona zonaTrobadad = catalegZonesTrie.search(nomBuscado); // Cerca exacta amb el Trie
+        if (zonaTrobadad != null) {
+            float zonaCenterX = (zonaTrobadad.getX1() + zonaTrobadad.getX2()) / 2f;
+            float zonaCenterY = (zonaTrobadad.getY1() + zonaTrobadad.getY2()) / 2f;
+
+            Cx = zonaCenterX;
+            Cy = zonaCenterY;
+
+            float zonaWidth = zonaTrobadad.getX2() - zonaTrobadad.getX1();
+            float zonaHeight = zonaTrobadad.getY2() - zonaTrobadad.getY1();
+
+            if (SV != null) {
+                float scaleX = (float) SV.getWidth() / zonaWidth;
+                float scaleY = (float) SV.getHeight() / zonaHeight;
+                fe = Math.min(scaleX, scaleY) * 0.9f;
+            } else {
+                Log.e("MainActivity", "SV (SurfaceView) és nul. No es pot calcular l'escala.");
+                fe = 1.0f; // Valor per defecte segur
+            }
+
+            fe = Math.max(zoomMinim, Math.min(fe, zoomMaxim));
+
+            // Crides als teus mètodes de dibuix i actualització del mapa
+            // dibuixaMapa(); // Descomenta aquestes línies un cop tinguis els mètodes
+            // actualitzaInformacioZonaActual(); // Descomenta aquestes línies un cop tinguis els mètodes
+            Toast.makeText(this, "Zona trobada: " + zonaTrobadad.getNomOficial(), Toast.LENGTH_SHORT).show();
+        } else {
+            Toast.makeText(this, "Zona no trobada: " + nomBuscado, Toast.LENGTH_SHORT).show();
+        }
+        // Amaga el teclat virtual
+        android.view.inputmethod.InputMethodManager imm = (android.view.inputmethod.InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+        imm.hideSoftInputFromWindow(editTextCercaZona.getWindowToken(), 0);
+
+        // Amaga també la llista de suggeriments després de la cerca o quan el teclat s'amaga
+        suggestionsListView.setVisibility(View.GONE);
+    }
     public void inicializarConjuntoCriaturas(){
         SurfaceView sv2 = findViewById(R.id.surfaceView2);
         textCriatures = findViewById(R.id.textCriaturas);
