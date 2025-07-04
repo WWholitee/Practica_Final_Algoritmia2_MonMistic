@@ -369,7 +369,7 @@ public class MainActivity extends AppCompatActivity {
             fe = Math.max(zoomMinim, Math.min(fe, zoomMaxim));
 
             // Crides als teus mètodes de dibuix i actualització del mapa
-            // dibuixaMapa(); // Descomenta aquestes línies un cop tinguis els mètodes
+            dibuixaMapa(); // Descomenta aquestes línies un cop tinguis els mètodes
             // actualitzaInformacioZonaActual(); // Descomenta aquestes línies un cop tinguis els mètodes
             Toast.makeText(this, "Zona trobada: " + zonaTrobadad.getNomOficial(), Toast.LENGTH_SHORT).show();
         } else {
